@@ -1,4 +1,4 @@
-### narou-doenloader
+### narou-downloader
 na6dlは小説家になろうおよび姉妹サイトで公開されている小説を青空文庫形式のテキストファイルでダウンロードするためのツールです。URLがhttps://ncode.syosetu.com/およびhttps://novel18.syosetu.com/で始まる作品をダウンロードすることが出来ます。
 
 ### 動作環境
