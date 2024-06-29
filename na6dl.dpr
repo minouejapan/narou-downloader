@@ -884,7 +884,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver2.7 2024/6/14 (c) INOUE, masahiro.');
+    Writeln('na6dl ver2.8 2024/6/27 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
