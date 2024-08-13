@@ -1,6 +1,8 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.0 2024/07/18  Lazarus/Delphiどちらでもビルド出来るようにした
+                  文字列が空かどうかのチェックが抜けている箇所がありメモリアクセス違反が発生することがあった不具合を修正した
   2.8 2024/06/28  Githubにあげるためソースコードを整理した
                   小説家になろうサーバーへの負荷を減らすためDL1話毎のインターバルを0.2→0.4秒にした
   2.7 2024/06/14  本文中の<>を余計なHTMLタグとして除去してしまう不具合を修正した
@@ -229,10 +231,15 @@ function TrimJ(src: string): string;
 var
   tmp: string;
 begin
-  tmp := Trim(src);
-  while tmp[1] = '　' do
-    Delete(tmp, 1, 1);
-  Result := tmp;
+  Result := src;
+  if Length(src) > 0 then
+  begin
+    tmp := Trim(src);
+    if Length(tmp) > 0 then
+      while tmp[1] = '　' do
+        Delete(tmp, 1, 1);
+    Result := tmp;
+  end;
 end;
 
 // タイトル名をファイル名として使用出来るかどうかチェックし、使用不可文字が
