@@ -10,7 +10,9 @@ https://github.com/IndySockets/OpenSSL-Binaries
 
 ### 実行ファイルの作り方
 ・Delphi (XE2以降)の場合：na6dl.dprojを開いてビルドしてください。尚、ビルドするためにはIndy10ライブラリとTregExprライブラリが必要です。
+
 ・Lazarus（3.2以降）の場合：na6dl.lpiを開いてビルドして下さい。尚、ビルドするためにはIndy10ライブラリとTregExprライブラリが必要です。
+
 ・TregExprライブラリ：https://github.com/andgineer/TRegExpr
 
 ### 使い方
