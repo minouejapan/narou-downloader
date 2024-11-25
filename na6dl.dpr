@@ -1,6 +1,8 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.4 2024/11/25  短編作品のタイトルに"短編"が入っているとダウンロード出来なかった不具合を修正した
+  3.3 2024/11/24  -sオプションで最終エピソードを指定した場合ダウンロード出来なかった不具合を修正した
   3.2 2024/09/20  なろうのHTML構成が変更されてDL出来なくなったため修正した
   3.1 2024/09/04  ダウンロード出来ない作品があったため文字列が空かどうかのチェック方法を修正した
 	3.0	2024/07/18	Lazarus/Delphiどちらでもビルド出来るようにした
@@ -62,6 +64,7 @@ uses
   System.DateUtils,
   WinAPI.Messages,
 {$ENDIF}
+  Vcl.ClipBrd,
   Windows,
   regexpr,
   // Indy10が必要
@@ -471,9 +474,11 @@ var
 begin
   Result := '';
   str := LoadHTMLbyIndy(NiURL);
+  ClipBoard.AsText := str;
   if UTF8Length(str) =0 then
     Exit;
   // 小説が短編かどうかチェックする
+  //if UTF8Pos('<span id="noveltype">短編</span>', str) > 0 then
   if UTF8Pos('<span id="noveltype">短編</span>', str) > 0 then
   begin
     Result := '【短編】';     // 短編のシンボルテキストを返す
@@ -542,7 +547,10 @@ begin
     begin
       Inc(n);
       SetConsoleCursorPosition(hCOutput, CSBI.dwCursorPosition);
-      Write('各話を取得中 [' + Format('%3d', [i + 1]) + '/' + Format('%3d', [cnt]) + '(' + Format('%d', [(n * 100) div sc]) + '%)]');
+      if StartN = 0 then
+        Write('各話を取得中 [' + Format('%3d', [i + 1]) + '/' + Format('%3d', [cnt]) + '(' + Format('%d', [(n * 100) div sc]) + '%)]')
+      else
+        Write('各話を取得中 [' + Format('%3d', [i + 1]) + '/' + Format('%3d', [cnt]) +']');
       if hWnd <> 0 then
         SendMessage(hWnd, WM_DLINFO, n, 1);
       pinfo.CommaText := PageList.Strings[i];
@@ -578,7 +586,7 @@ end;
 function ParseChapter(Line: string): boolean;
 var
 	ps, pe, cs, ce, page: integer;
-  str, sub, nstat: string;
+  str, sub, nstat, sn: string;
   title, auth, authurl, synop, chapter, section, sendstr: string;
   conhdl: THandle;
 begin
@@ -608,9 +616,9 @@ begin
     // すでにタイトルに進捗状況が付いていないことをチェックして（タイトル先頭に【完結】が付いて
     // いる場合があるため）、なければ進捗状況を追加する
     if (nstat = '【完結】') and (UTF8Pos('完結', title) > 0) then
-      nstat := ''
-    else if (nstat = '【短編】') and (UTF8Pos('短編', title) > 0) then
       nstat := '';
+    //else if (nstat = '【短編】') and (UTF8Pos('短編', title) > 0) then
+    //  nstat := '';
     // タイトル名に進捗状況を付加する
     title := nstat + title;
     // 保存するファイル名を準備する
@@ -618,8 +626,10 @@ begin
     begin
       FileName := PathFilter(title);
       if StartPage <> '' then
-        FileName := FileName + '(' + StartPage + ')';
-      FileName := ExtractFilePath(ParamStr(0)) + UTF8Copy(FileName, 1, 32) + '.txt';
+        sn := '(' + StartPage + ')'
+      else
+        sn := '';
+      FileName := ExtractFilePath(ParamStr(0)) + UTF8Copy(FileName, 1, 32) + sn + '.txt';
     end;
   end;
   // 作者
@@ -786,9 +796,9 @@ begin
     Writeln(IntToStr(PageList.Count) + ' 話の情報を取得しました.');
   end;
   // リストが取得出来ないかDL開始ページ以降のページがなければエラーにする
-  if (nstat <> '【短編】') and ((PageList.Count = 0) or ((PageList.Count - StartN) <= 0)) then
+  if (nstat <> '【短編】') and ((PageList.Count = 0) or ((PageList.Count - StartN) < 0)) then
   begin
-    if (PageList.Count - StartN) <= 0 then
+    if (PageList.Count - StartN) < 0 then
       Writeln('DL開始ページがありません.');
     Exit;
   end;
@@ -885,7 +895,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver3.2 2024/9/20 (c) INOUE, masahiro.');
+    Writeln('na6dl ver3.3 2024/11/24 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
