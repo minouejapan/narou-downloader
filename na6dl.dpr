@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.5 2024/12/10  作者URLが設定されていない場合、作者名をうまく取得出来なかった不具合を修正した
   3.4 2024/11/25  短編作品のタイトルに"短編"が入っているとダウンロード出来なかった不具合を修正した
   3.3 2024/11/24  -sオプションで最終エピソードを指定した場合ダウンロード出来なかった不具合を修正した
   3.2 2024/09/20  なろうのHTML構成が変更されてDL出来なくなったため修正した
@@ -589,6 +590,7 @@ var
   str, sub, nstat, sn: string;
   title, auth, authurl, synop, chapter, section, sendstr: string;
   conhdl: THandle;
+  r: TRegExpr;
 begin
   Write('小説情報を取得中 ' + URL + ' ... ');
   Result := False;
@@ -633,29 +635,49 @@ begin
     end;
   end;
   // 作者
-  ps := UTF8Pos('作者：<a href="', Line);
+  authurl := '';
+  auth := '';
+//  ps := UTF8Pos('作者：<a href="', Line);
+  ps := UTF8Pos('作者：', Line);
   if ps > 1 then
   begin
-    authurl := UTF8Copy(Line, ps + UTF8Length('作者：<a href="'), 40);
-    UTF8Delete(Line, 1, ps + UTF8Length('作者：<a href="'));
-    pe := UTF8Pos('">', authurl);
-    if pe > 1 then
-    begin
-      UTF8Delete(authurl, pe, 40);
-      pe := UTF8Pos('">', Line);
-      if pe > 0 then
-        Delete(Line, 1, pe + 1);
+    Delete(Line, 1, ps + Length('作者：') - 1);
+    r := TRegExpr.Create;
+    try
+      r.Expression  := '<a href.*?>';
+      r.InputString := UTF8Copy(Line, 1, 60);
+      if r.Exec then
+        authurl := r.Match[0];
+    finally
+      r.Free;
     end;
-  end else begin
-    authurl := '';
+    if authurl <> '' then
+    begin
+      Delete(Line, 1, Length(authurl));
+      authurl := UTF8StringReplace(authurl, '<a href="', '', [rfReplaceAll]);
+      authurl := UTF8StringReplace(authurl, '">', '', [rfReplaceAll]);
+      pe := UTF8Pos('</a>', Line);
+      if pe > 0 then
+      begin
+        auth := UTF8Copy(Line, 1, pe - 1);
+        Delete(Line , 1, pe - 1);
+      end;
+    end else begin
+      pe := UTF8Pos(#13#10'</div>', Line);
+      if pe > 0 then
+      begin
+        auth := UTF8Copy(Line, 1, pe - 1);
+        Delete(Line , 1, pe - 1);
+      end;
+    end;
   end;
   ps := UTF8Pos('</a>', Line);
   if ps > 0 then
   begin
-  	auth := Restore2Realchar(UTF8Copy(Line, 1, ps - 1));
+  	//auth := Restore2Realchar(UTF8Copy(Line, 1, ps - 1));
     // タイトル、作者名を保存
     PBody := title + #13#10 + auth + #13#10 + AO_PB2 + #13#10;
-    LogFile.Add('小説URL : ' + URL);
+    LogFile.Add('小説URL :' + URL);
     LogFile.Add('タイトル:' + title);
     LogFile.Add('作者　　:' + auth);
     if authurl <> '' then
@@ -895,7 +917,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver3.3 2024/11/24 (c) INOUE, masahiro.');
+    Writeln('na6dl ver3.5 2024/12/10 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
