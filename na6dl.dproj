@@ -76,7 +76,7 @@
 			<DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-			<Debugger_RunParams>https://ncode.syosetu.com/n1875cl/</Debugger_RunParams>
+			<Debugger_RunParams>https://ncode.syosetu.com/n3524jz/</Debugger_RunParams>
 			<Icon_MainIcon>na6dl.ico</Icon_MainIcon>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 		</PropertyGroup>

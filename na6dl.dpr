@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.6 2025/01/30  作品情報が読み込めなくなったためファイルを保存出来なくなった不具合を修正した
   3.5 2024/12/10  作者URLが設定されていない場合、作者名をうまく取得出来なかった不具合を修正した
   3.4 2024/11/25  短編作品のタイトルに"短編"が入っているとダウンロード出来なかった不具合を修正した
   3.3 2024/11/24  -sオプションで最終エピソードを指定した場合ダウンロード出来なかった不具合を修正した
@@ -65,7 +66,6 @@ uses
   System.DateUtils,
   WinAPI.Messages,
 {$ENDIF}
-  Vcl.ClipBrd,
   Windows,
   regexpr,
   // Indy10が必要
@@ -219,58 +219,28 @@ begin
   end;
 end;
 
-// タイトル名をファイル名として使用出来るかどうかチェックし、使用不可文字が
-// あれば修正する('-'に置き換える)
-// フォルダ名の最後が'.'の場合、フォルダ作成時に"."が無視されてフォルダ名が
-// 見つからないことになるため'.'も'-'で置き換える
-// LazarusではUTF8文字列をインデックス(string[])でアクセス出来ないため、
-// UTF8Copy, UTF8Delete, UTF8Insert処理で置き換える
+// タイトル名にファイル名として使用出来ない文字を'-'に置換する
+// Lazarus(FPC)とDelphiで文字コード変換方法が異なるためコンパイル環境で
+// 変換処理を切り替える
+function PathFilter(PassName: string): string;
+var
+  path: string;
+  tmp: AnsiString;
+begin
+  // ファイル名を一旦ShiftJISに変換して再度Unicode化することでShiftJISで使用
+  // 出来ない文字を除去する
 {$IFDEF FPC}
-function PathFilter(PassName: string): string;
-var
-  i, l: integer;
-  path: string;
-  tmp: AnsiString;
-  ch: string;     // LazarusではCharにUTF-8の文字を代入できないためstringで定義する
-begin
-  // ファイル名を一旦ShiftJISに変換して再度Unicode化することでShiftJISで使用
-  // 出来ない文字を除去する
-  tmp := UTF8ToWinCP(PassName);
+  tmp  := UTF8ToWinCP(PassName);
   path := WinCPToUTF8(tmp);      // これでUTF-8依存文字は??に置き換わる
-  l :=  UTF8Length(path);
-  for i := 1 to l do
-  begin
-    ch := UTF8Copy(path, i, 1); // i番目の文字を取り出す
-    if UTF8Pos(ch, '\/;:*?"<>|. '+#$09) > 0 then // 文字種が使用不可であれば
-    begin
-      UTF8Delete(path, i, 1);                // 該当文字を削除して
-      UTF8Insert('-', path, i);              // 代わりに'-'を挿入する
-    end;
-  end;
-  Result := path;
-end;
 {$ELSE}
-function PathFilter(PassName: string): string;
-var
-	i, l: integer;
-  path: string;
-  tmp: AnsiString;
-  ch: char;
-begin
-  // ファイル名を一旦ShiftJISに変換して再度Unicode化することでShiftJISで使用
-  // 出来ない文字を除去する
-  tmp := AnsiString(PassName);
+  tmp  := AnsiString(PassName);
 	path := string(tmp);
-  l :=  UTF8Length(path);
-  for i := 1 to l do
-  begin
-  	ch := Char(path[i]);
-    if UTF8Pos(ch, '\/;:*?"<>|. '+#$09) > 0 then
-      path[i] := '-';
-  end;
+{$ENDIF}
+  // ファイル名として使用できない文字を'-'に置換する
+  path := ReplaceRegExpr('[\\/:;\*\?\+,.|\.\t ]', path, '-');
+
   Result := path;
 end;
-{$ENDIF}
 
 // id=行番号タグを除去する
 function LTagFilter(SrcText: string): string;
@@ -475,10 +445,8 @@ var
 begin
   Result := '';
   str := LoadHTMLbyIndy(NiURL);
-  ClipBoard.AsText := str;
   if UTF8Length(str) =0 then
     Exit;
-  // 小説が短編かどうかチェックする
   //if UTF8Pos('<span id="noveltype">短編</span>', str) > 0 then
   if UTF8Pos('<span id="noveltype">短編</span>', str) > 0 then
   begin
@@ -589,6 +557,9 @@ var
 	ps, pe, cs, ce, page: integer;
   str, sub, nstat, sn: string;
   title, auth, authurl, synop, chapter, section, sendstr: string;
+{$IFDEF FPC}
+  ws: WideString;
+{$ENDIF}
   conhdl: THandle;
   r: TRegExpr;
 begin
@@ -607,11 +578,11 @@ begin
   end else
   	Exit;
   // 小説情報URL
-  ps := UTF8Pos('<a class="c-menu__item" href="', Line);
+  ps := UTF8Pos('<a class="c-menu__item c-menu__item--headnav" href="', Line);
   pe := UTF8Pos('">作品情報</a>', Line);
   if (ps > 0) and (pe >ps) then
   begin
-  	ps 					:= ps + Utf8Length('<a class="c-menu__item" href="');
+  	ps 					:= ps + Utf8Length('<a class="c-menu__item c-menu__item--headnav" href="');
     str 				:= UTF8Copy(Line, ps, pe - ps);
     UTF8Delete(Line, 1, pe + 15);
     nstat := GetNovelStatus(str);
@@ -623,16 +594,16 @@ begin
     //  nstat := '';
     // タイトル名に進捗状況を付加する
     title := nstat + title;
-    // 保存するファイル名を準備する
-    if FileName = '' then
-    begin
-      FileName := PathFilter(title);
-      if StartPage <> '' then
-        sn := '(' + StartPage + ')'
-      else
-        sn := '';
-      FileName := ExtractFilePath(ParamStr(0)) + UTF8Copy(FileName, 1, 32) + sn + '.txt';
-    end;
+  end;
+  // 保存するファイル名を準備する
+  if FileName = '' then
+  begin
+    FileName := PathFilter(title);
+    if StartPage <> '' then
+      sn := '(' + StartPage + ')'
+    else
+      sn := '';
+    FileName := ExtractFilePath(ParamStr(0)) + UTF8Copy(FileName, 1, 32) + sn + '.txt';
   end;
   // 作者
   authurl := '';
@@ -830,8 +801,14 @@ begin
     conhdl := GetStdHandle(STD_OUTPUT_HANDLE);
     sendstr := title + ',' + auth;
     Cds.dwData := PageList.Count - StartN + 1;
+  {$IFDEF FPC}
+    ws := UTF8ToUTF16(sendstr);
+    Cds.cbData := ByteLength(ws) + 2;
+    Cds.lpData := PWideChar(ws);
+  {$ELSE}
     Cds.cbData := (UTF8Length(sendstr) + 1) * SizeOf(Char);
     Cds.lpData := Pointer(sendstr);
+  {$ENDIF}
     SendMessage(hWnd, WM_COPYDATA, conhdl, LPARAM(Addr(Cds)));
   end;
   Result := True;
@@ -917,7 +894,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver3.5 2024/12/10 (c) INOUE, masahiro.');
+    Writeln('na6dl ver3.51 2025/1/23 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
