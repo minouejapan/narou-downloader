@@ -1,6 +1,8 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.7 2025/02/08  日付変換でEConvertErrorが発生する場合がある不具合に対処した
+                  &#????;にエンコードされた文字のデコード処理の不具合を修正した
   3.6 2025/01/30  作品情報が読み込めなくなったためファイルを保存出来なくなった不具合を修正した
   3.5 2024/12/10  作者URLが設定されていない場合、作者名をうまく取得出来なかった不具合を修正した
   3.4 2024/11/25  短編作品のタイトルに"短編"が入っているとダウンロード出来なかった不具合を修正した
@@ -48,30 +50,19 @@ program na6dl;
 {$ENDIF}
 
 {$R *.res}
-{$R verinfo.res}
+{$R 'verinfo.res' 'verinfo.rc'}
 
 uses
-{$IFDEF FPC}
-  SysUtils,
-  Classes,
-  Messages,
-  DateUtils,
-  LCL,
-  LazUTF8,
-  indylaz,
-{$ELSE}
   LazUTF8wrap,
   System.SysUtils,
   System.Classes,
   System.DateUtils,
   WinAPI.Messages,
-{$ENDIF}
   Windows,
   regexpr,
-  // Indy10が必要
   IdHTTP,
   IdCookieManager,
-  IdSSLOpenSSL,     // openssl-1.0.2が必要
+  IdSSLOpenSSL,
   IdGlobal,
   IdURI;
 
@@ -132,6 +123,7 @@ const
 // ユーザメッセージID
   WM_DLINFO  = WM_USER + 30;
 
+
 var
   IdHTTP: TIdHTTP;
   IdSSL: TIdSSLIOHandlerSocketOpenSSL;
@@ -147,6 +139,7 @@ var
   StartN,
   ConteP,
   LimitDay: integer;
+
 
 // Indyを用いたHTMLファイルのダウンロード
 function LoadHTMLbyIndy(URLadr: string): string;
@@ -276,7 +269,7 @@ end;
 function Restore2RealChar(Base: string): string;
 var
   tmp, cd: string;
-  w: integer;
+  w, mp, ml: integer;
   ch: Char;
   r: TRegExpr;
 begin
@@ -298,8 +291,10 @@ begin
     if r.Exec then
     begin
       repeat
-        UTF8Delete(tmp, r.MatchPos[0], r.MatchLen[0]);
         cd := r.Match[0];
+        mp := r.MatchPos[0];
+        ml := r.MatchLen[0];
+        UTF8Delete(tmp, mp, ml);
         UTF8Delete(cd, 1, 2);           // &#を削除する
         UTF8Delete(cd, UTF8Length(cd), 1);  // 最後の;を削除する
         if cd[1] = 'x' then         // 先頭が16進数を表すxであればDelphiの16進数接頭文字$に変更する
@@ -308,10 +303,11 @@ begin
           w := StrToInt(cd);
           ch := Char(w);
         except
-          ch := '？';
+          ch := '?';
         end;
-        UTF8Insert(ch, tmp, r.MatchPos[0]);
-      until not r.ExecNext;
+        UTF8Insert(ch, tmp, mp);
+        r.InputString := tmp;
+      until not r.Exec;
     end;
   finally
     r.Free;
@@ -473,7 +469,12 @@ begin
       pe    := UTF8Pos('</td>', str);
       stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
       stat  := FormatDate(stat);
-      upd   := StrToDateTime(stat);
+      // EConvertError回避
+      try
+        upd   := StrToDateTime(stat);
+      except
+        upd := Yesterday;
+      end;
       tdy   := Today;
       dd    := DaysBetween(tdy, upd); // 最新掲載日から現在までの経過日数を取得する
       if dd > LimitDay then
@@ -543,7 +544,7 @@ begin
   end;
   CCI.bVisible := True;
   SetConsoleCursorInfo(hCoutput, CCI);
-  Writeln(' ... ' + IntToStr(cc) + ' 個のエピソードを取得しました.');
+  Writeln(' ... ' + IntToStr(n) + ' 個のエピソードを取得しました.');
   if cc < sc then
     Writeln('!!! ' + IntToStr(sc - cc) + ' 個の取得に失敗しいました.');
 
@@ -555,7 +556,7 @@ end;
 function ParseChapter(Line: string): boolean;
 var
 	ps, pe, cs, ce, page: integer;
-  str, sub, nstat, sn: string;
+  str, sub, nstat, sn, dt: string;
   title, auth, authurl, synop, chapter, section, sendstr: string;
 {$IFDEF FPC}
   ws: WideString;
@@ -675,7 +676,14 @@ begin
       LogFile.Add('あらすじ');
       LogFile.Add(synop);
       LogFile.Add('');
-      LogFile.Add(DateToStr(Today));
+      // EConvertError回避
+      try
+        DateTimeToString(dt, 'yyyy/MM/dd', Today);
+        LogFile.Add(dt);
+      except
+        ;
+      end;
+      //LogFile.Add(DateToStr(Today));
       if nstat <> '【短編】' then
         PBody := PBody + AO_KKL + URL + #13#10 + synop + #13#10 + AO_KKR + #13#10 + AO_PB2 + #13#10;
     end;
@@ -894,7 +902,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver3.51 2025/1/23 (c) INOUE, masahiro.');
+    Writeln('na6dl ver3.7 2025/2/8 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
