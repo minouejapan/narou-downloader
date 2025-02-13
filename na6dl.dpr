@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.8 2025/02/13  短編の作者名がおかしかった不具合を修正した
   3.7 2025/02/08  日付変換でEConvertErrorが発生する場合がある不具合に対処した
                   &#????;にエンコードされた文字のデコード処理の不具合を修正した
   3.6 2025/01/30  作品情報が読み込めなくなったためファイルを保存出来なくなった不具合を修正した
@@ -609,7 +610,6 @@ begin
   // 作者
   authurl := '';
   auth := '';
-//  ps := UTF8Pos('作者：<a href="', Line);
   ps := UTF8Pos('作者：', Line);
   if ps > 1 then
   begin
@@ -625,6 +625,9 @@ begin
     end;
     if authurl <> '' then
     begin
+      // 先頭に#13#10があれば削除する
+      if Pos(#13#10, Line) = 1 then
+        UTF8Delete(Line, 1, 2);
       Delete(Line, 1, Length(authurl));
       authurl := UTF8StringReplace(authurl, '<a href="', '', [rfReplaceAll]);
       authurl := UTF8StringReplace(authurl, '">', '', [rfReplaceAll]);
