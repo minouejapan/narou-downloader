@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.9 2025/02/23  作者URLがない場合の作者名がうまく取得出来なかった不具合を修正した
   3.8 2025/02/13  短編の作者名がおかしかった不具合を修正した
   3.7 2025/02/08  日付変換でEConvertErrorが発生する場合がある不具合に対処した
                   &#????;にエンコードされた文字のデコード処理の不具合を修正した
@@ -52,6 +53,7 @@ program na6dl;
 
 {$R *.res}
 {$R 'verinfo.res' 'verinfo.rc'}
+{$R *.dres}
 
 uses
   LazUTF8wrap,
@@ -610,41 +612,30 @@ begin
   // 作者
   authurl := '';
   auth := '';
-  ps := UTF8Pos('作者：', Line);
-  if ps > 1 then
-  begin
-    Delete(Line, 1, ps + Length('作者：') - 1);
-    r := TRegExpr.Create;
-    try
-      r.Expression  := '<a href.*?>';
-      r.InputString := UTF8Copy(Line, 1, 60);
-      if r.Exec then
-        authurl := r.Match[0];
-    finally
-      r.Free;
-    end;
-    if authurl <> '' then
+  r := TRegExpr.Create;
+  try
+    r.InputString := Line;
+    r.Expression  := '<div class="p-novel__author">作者：.*?</div>';
+    if r.Exec then
     begin
-      // 先頭に#13#10があれば削除する
-      if Pos(#13#10, Line) = 1 then
-        UTF8Delete(Line, 1, 2);
-      Delete(Line, 1, Length(authurl));
-      authurl := UTF8StringReplace(authurl, '<a href="', '', [rfReplaceAll]);
-      authurl := UTF8StringReplace(authurl, '">', '', [rfReplaceAll]);
-      pe := UTF8Pos('</a>', Line);
-      if pe > 0 then
+      auth := r.Match[0];
+      auth := ReplaceRegExpr('<div class="p-novel__author">作者：', auth, '');
+      auth := ReplaceRegExpr('</div>', auth, '');
+      r.InputString := auth;
+      r.Expression  := '<a href=".*?">';
+      // 作者URLがある
+      if r.Exec then
       begin
-        auth := UTF8Copy(Line, 1, pe - 1);
-        Delete(Line , 1, pe - 1);
+        authurl := r.Match[0];
+        auth    := ReplaceRegExpr(authurl, auth, '');
+        auth    := ReplaceRegExpr('</a>', auth, '');
+        authurl := ReplaceRegExpr('<a href="', authurl, '');
+        authurl := ReplaceRegExpr('">', authurl, '');
       end;
-    end else begin
-      pe := UTF8Pos(#13#10'</div>', Line);
-      if pe > 0 then
-      begin
-        auth := UTF8Copy(Line, 1, pe - 1);
-        Delete(Line , 1, pe - 1);
-      end;
+      auth := ReplaceRegExpr('\r\n', auth, '');
     end;
+  finally
+    r.Free;
   end;
   ps := UTF8Pos('</a>', Line);
   if ps > 0 then
@@ -885,7 +876,7 @@ begin
   begin
     Writeln('');
     Writeln('na6dlを使用するためのOpenSSLライブラリが見つかりません.');
-    Writeln('以下のサイトからopenssl-1.0.2q-i386-win32.zipをダウンロードしてlibeay32.dllとssleay32.dllをna6dl.exeがあるフォルダにコピーして下さい.');
+    Writeln('以下のサイトからopenssl-1.0.2u-x64_86-win64.zipをダウンロードしてlibeay32.dllとssleay32.dllをna6dl.exeがあるフォルダにコピーして下さい.');
     Writeln('https://github.com/IndySockets/OpenSSL-Binaries');
     ExitCode := 2;
     Exit;
@@ -896,7 +887,7 @@ begin
   begin
     Writeln('');
     Writeln('OpenSSLライブラリのバージョンが違います.');
-    Writeln('以下のサイトからopenssl-1.0.2q-i386-win32.zipをダウンロードしてlibeay32.dllとssleay32.dllをna6dl.exeがあるフォルダにコピーして下さい.');
+    Writeln('以下のサイトからopenssl-1.0.2u-x64_86-win64.zipをダウンロードしてlibeay32.dllとssleay32.dllをna6dl.exeがあるフォルダにコピーして下さい.');
     Writeln('https://github.com/IndySockets/OpenSSL-Binaries');
     ExitCode := 2;
     Exit;
@@ -905,7 +896,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver3.7 2025/2/8 (c) INOUE, masahiro.');
+    Writeln('na6dl ver3.9 2025/2/23 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
