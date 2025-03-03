@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  3.91     03/03  ファイル名に使用できない文字から漏れていた"<>の処理を追加した
   3.9 2025/02/23  作者URLがない場合の作者名がうまく取得出来なかった不具合を修正した
   3.8 2025/02/13  短編の作者名がおかしかった不具合を修正した
   3.7 2025/02/08  日付変換でEConvertErrorが発生する場合がある不具合に対処した
@@ -142,6 +143,7 @@ var
   StartN,
   ConteP,
   LimitDay: integer;
+  DLErr: string;
 
 
 // Indyを用いたHTMLファイルのダウンロード
@@ -233,7 +235,7 @@ begin
 	path := string(tmp);
 {$ENDIF}
   // ファイル名として使用できない文字を'-'に置換する
-  path := ReplaceRegExpr('[\\/:;\*\?\+,.|\.\t ]', path, '-');
+  path := ReplaceRegExpr('[\\/:;\*\?\+,."<>|\.\t ]', path, '-');
 
   Result := path;
 end;
@@ -549,8 +551,10 @@ begin
   SetConsoleCursorInfo(hCoutput, CCI);
   Writeln(' ... ' + IntToStr(n) + ' 個のエピソードを取得しました.');
   if cc < sc then
+  begin
     Writeln('!!! ' + IntToStr(sc - cc) + ' 個の取得に失敗しいました.');
-
+    DLErr := '［DL失敗］';  // ダウンロードが失敗した場合はファイル名の頭にマークを付ける
+  end;
 end;
 
 //
@@ -896,7 +900,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver3.9 2025/2/23 (c) INOUE, masahiro.');
+    Writeln('na6dl ver3.91 2025/3/3 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
@@ -978,69 +982,73 @@ begin
   IdHTTP := TIdHTTP.Create(nil);
   IdSSL := TIdSSLIOHandlerSocketOpenSSL.Create;
   Cookies := TIdCookieManager.Create(nil);
-  IdSSL.IPVersion := Id_IPv4;
-  IdSSL.MaxLineLength := 32768;
-  IdSSL.SSLOptions.Method := sslvSSLv23;
-  IdSSL.SSLOptions.SSLVersions := [sslvSSLv2,sslvTLSv1];
-  IdHTTP.HandleRedirects := True;
-  IdHTTP.AllowCookies := True;
-  IdHTTP.IOHandler := IdSSL;
-  // IdHTTPインスタンスにover18=yesのキャッシュを設定する
-  if isOver18 then
-  begin
-    IdHTTP.CookieManager := TIdCookieManager.Create(IdHTTP);
-    URI := TIdURI.Create('https://novel18.syosetu.com/');
-    try
-      IdHTTP.CookieManager.AddServerCookie('over18=yes', URI);
-    finally
-      URI.Free;
-    end;
-    asource := TStringStream.Create;
-    try
-      IdHTTP.Post('https://novel18.syosetu.com/', asource);
-    finally
-      asource.Free;
-    end;
-  end;
-  Capter := '';
-  TextLine := LoadHTMLbyIndy(URL);
-  if TextLine <> '' then
-  begin
-    PageList := TStringList.Create;
-    TextPage := TStringList.Create;
-    LogFile  := TStringList.Create;
-    try
-      if ParseChapter(TextLine) then          // 小説の目次情報を取得
-      begin
-        // 短編でなければ各話を取得する
-        if PageList.Count >= StartN then
-          LoadEachPage;                       // 小説各話情報を取得
-        try
-          TextPage.Text := PBody;
-        	TextPage.WriteBOM := True;
-        	LogFile.WriteBOM := True;
-          TextPage.SaveToFile(Filename, TEncoding.UTF8);
-          LogFile.SaveToFile(ChangeFileExt(FileName, '.log'), TEncoding.UTF8);
-          Writeln(ExtractFileName(Filename) + ' に保存しました.');
-        except
-          ExitCode := -1;
-          Writeln('ファイルの保存に失敗しました.');
-        end;
-      end else begin
-        Writeln(URL + 'から作品情報を取得できませんでした.');
-        ExitCode := -1;
+  try
+    IdSSL.IPVersion := Id_IPv4;
+    IdSSL.MaxLineLength := 32768;
+    IdSSL.SSLOptions.Method := sslvSSLv23;
+    IdSSL.SSLOptions.SSLVersions := [sslvSSLv2,sslvTLSv1];
+    IdHTTP.HandleRedirects := True;
+    IdHTTP.AllowCookies := True;
+    IdHTTP.IOHandler := IdSSL;
+    // IdHTTPインスタンスにover18=yesのキャッシュを設定する
+    if isOver18 then
+    begin
+      IdHTTP.CookieManager := TIdCookieManager.Create(IdHTTP);
+      URI := TIdURI.Create('https://novel18.syosetu.com/');
+      try
+        IdHTTP.CookieManager.AddServerCookie('over18=yes', URI);
+      finally
+        URI.Free;
       end;
-    finally
-      LogFile.Free;
-      PageList.Free;
-      TextPage.Free;
+      asource := TStringStream.Create;
+      try
+        IdHTTP.Post('https://novel18.syosetu.com/', asource);
+      finally
+        asource.Free;
+      end;
     end;
-  end else begin
-    Writeln(URL + 'からHTMLソースを取得できませんでした.');
-    ExitCode := -1;
-  end;
+    DLErr := '';
+    Capter := '';
+    TextLine := LoadHTMLbyIndy(URL);
+    if TextLine <> '' then
+    begin
+      PageList := TStringList.Create;
+      TextPage := TStringList.Create;
+      LogFile  := TStringList.Create;
+      try
+        if ParseChapter(TextLine) then          // 小説の目次情報を取得
+        begin
+          // 短編でなければ各話を取得する
+          if PageList.Count >= StartN then
+            LoadEachPage;                       // 小説各話情報を取得
+          try
+            TextPage.Text := PBody;
+            TextPage.WriteBOM := True;
+            LogFile.WriteBOM := True;
+            TextPage.SaveToFile(DLErr + Filename, TEncoding.UTF8);
+            LogFile.SaveToFile(ChangeFileExt(FileName, '.log'), TEncoding.UTF8);
+            Writeln(ExtractFileName(Filename) + ' に保存しました.');
+          except
+            ExitCode := -1;
+            Writeln('ファイルの保存に失敗しました.');
+          end;
+        end else begin
+          Writeln(URL + 'から作品情報を取得できませんでした.');
+          ExitCode := -1;
+        end;
+      finally
+        LogFile.Free;
+        PageList.Free;
+        TextPage.Free;
+      end;
+    end else begin
+      Writeln(URL + 'からHTMLソースを取得できませんでした.');
+      ExitCode := -1;
+    end;
+  finally
     IdSSL.Free;
     IdHTTP.Free;
     Cookies.Free;
+  end;
 end.
 
