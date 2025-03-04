@@ -91,10 +91,10 @@
 			<DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
-			<Debugger_RunParams>https://ncode.syosetu.com/n6872hh/</Debugger_RunParams>
+			<Debugger_RunParams></Debugger_RunParams>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
-			<Debugger_RunParams>https://ncode.syosetu.com/n1943ju/</Debugger_RunParams>
+			<Debugger_RunParams></Debugger_RunParams>
 			<Icon_MainIcon>na6dl.ico</Icon_MainIcon>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 		</PropertyGroup>

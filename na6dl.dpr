@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  4.0 2025/03/05  作品情報ページのHTML構成が変更されたため連載状況取得部分を修正した
   3.91     03/03  ファイル名に使用できない文字から漏れていた"<>の処理を追加した
   3.9 2025/02/23  作者URLがない場合の作者名がうまく取得出来なかった不具合を修正した
   3.8 2025/02/13  短編の作者名がおかしかった不具合を修正した
@@ -448,30 +449,29 @@ begin
   str := LoadHTMLbyIndy(NiURL);
   if UTF8Length(str) =0 then
     Exit;
-  //if UTF8Pos('<span id="noveltype">短編</span>', str) > 0 then
-  if UTF8Pos('<span id="noveltype">短編</span>', str) > 0 then
+  if UTF8Pos('">短編</span>', str) > 0 then
   begin
     Result := '【短編】';     // 短編のシンボルテキストを返す
     StartN := 0;
     Exit;
   end;
   // 小説の状態が完結済かどうかをチェックする
-  ps := UTF8Pos('<span id="noveltype_notend">完結済', str) + UTF8Pos('<span id="noveltype">完結済', str);
+  ps := UTF8Pos('">完結済</span>', str);
   if ps > 0 then
   begin
     Result := '【完結】';     // 完結済のシンボルテキストを返す
     Exit;
   end;
   // 完結済みでない場合は最新更新日時を確認して連載中なのか中断かを判断する
-  ps := UTF8Pos('<th>最新掲載日</th>', str);
+  ps := UTF8Pos('<dt class="p-infotop-data__title">最新掲載日</dt>', str);
   if ps > 0  then
   begin
-    UTF8Delete(str, 1, ps + 15);
-    ps    := UTF8Pos('<td>', str);
+    UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">最新掲載日</dt>') - 1);
+    ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
     if ps > 0 then
     begin
-      UTF8Delete(str, 1, ps + 3);
-      pe    := UTF8Pos('</td>', str);
+      UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
+      pe    := UTF8Pos('</dd>', str);
       stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
       stat  := FormatDate(stat);
       // EConvertError回避
@@ -483,9 +483,9 @@ begin
       tdy   := Today;
       dd    := DaysBetween(tdy, upd); // 最新掲載日から現在までの経過日数を取得する
       if dd > LimitDay then
-        Result := '【中断】' // 60日以上更新されていなければ中断のシンボルテキストを返す
+        Result := '【中断】'   // 60日以上更新されていなければ中断のシンボルテキストを返す
       else
-        Result := '【連載中】';   // 連載中のシンボルテキストを返す
+        Result := '【連載中】';
     end;
   end;
 end;
@@ -900,7 +900,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver3.91 2025/3/3 (c) INOUE, masahiro.');
+    Writeln('na6dl ver4.0 2025/3/5 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
