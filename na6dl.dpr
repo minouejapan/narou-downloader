@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  4.1 2025/04/10  IndyのUser-AgentにMicrosoft Edgeを設定するようにした
   4.0 2025/03/05  作品情報ページのHTML構成が変更されたため連載状況取得部分を修正した
   3.91     03/03  ファイル名に使用できない文字から漏れていた"<>の処理を追加した
   3.9 2025/02/23  作者URLがない場合の作者名がうまく取得出来なかった不具合を修正した
@@ -900,7 +901,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver4.0 2025/3/5 (c) INOUE, masahiro.');
+    Writeln('na6dl ver4.1 2025/4/10 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
@@ -990,6 +991,8 @@ begin
     IdHTTP.HandleRedirects := True;
     IdHTTP.AllowCookies := True;
     IdHTTP.IOHandler := IdSSL;
+    // user-agentをMicrosoft Edgeにする
+    IdHTTP.Request.UserAgent := 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36 Edg/79.0.309.65';
     // IdHTTPインスタンスにover18=yesのキャッシュを設定する
     if isOver18 then
     begin
