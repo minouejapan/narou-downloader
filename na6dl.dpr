@@ -1,6 +1,8 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  4.2 2025/05/17  WinINetにMicrosoft EdgeのUse-Agentを設定したらダウンロード出来るようになったのでIndyからWinInetに戻した
+                  各話DL時にエラーが起こった場合に二回再DLを試みるようにした
   4.1 2025/04/10  IndyのUser-AgentにMicrosoft Edgeを設定するようにした
   4.0 2025/03/05  作品情報ページのHTML構成が変更されたため連載状況取得部分を修正した
   3.91     03/03  ファイル名に使用できない文字から漏れていた"<>の処理を追加した
@@ -66,11 +68,7 @@ uses
   WinAPI.Messages,
   Windows,
   regexpr,
-  IdHTTP,
-  IdCookieManager,
-  IdSSLOpenSSL,
-  IdGlobal,
-  IdURI;
+  WinINet;
 
 const
   // データ抽出用の識別タグ
@@ -131,11 +129,7 @@ const
 
 
 var
-  IdHTTP: TIdHTTP;
-  IdSSL: TIdSSLIOHandlerSocketOpenSSL;
-  Cookies: TIdCookieManager;
-  URI: TIdURI;
-  PageList,     // URL, Chapter, Section, Date
+  PageList,
   TextPage,
   LogFile: TStringList;
   Capter, URL, Path, FileName, TextLine, PBody, StartPage: string;
@@ -148,58 +142,60 @@ var
   DLErr: string;
 
 
-// Indyを用いたHTMLファイルのダウンロード
-function LoadHTMLbyIndy(URLadr: string): string;
+// WinINetを用いたHTMLファイルのダウンロード
+function LoadFromHTML(URLadr: string): string;
 var
-  IdURL: string;
-  rbuff: TMemoryStream;
-  tbuff: TStringList;
-  ret: Boolean;
-label
-  Terminate;
+  hSession    : HINTERNET;
+  hService    : HINTERNET;
+  dwBytesRead : DWORD;
+  dwFlag      : DWORD;
+  lpBuffer    : PChar;
+  RBuff       : TMemoryStream;
+  TBuff       : TStringList;
+  ua: string;
 begin
-	Result := '';
-  ret := False;
-
-  rbuff := TMemoryStream.Create;
-  tbuff := TStringList.Create;
-  try
-    try
-      IdHTTP.Head(URLadr);
-    except
-      //取得に失敗した場合、再度取得を試みる
-      try
-        IdHTTP.Head(URLadr);
-      except
-        ret := True;
-      end;
-    end;
-    if IdHTTP.ResponseCode = 302 then
+  Result   := '';
+  // Use-AgentにMicrosoft Edgeを設定する
+  ua       := 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36';
+  hSession := InternetOpen(PWideChar(ua), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
+  if Assigned(hSession) then
+  begin
+    InternetSetOption(hSession, INTERNET_OPTION_USER_AGENT, PChar(ua), Length(ua));
+    dwFlag   := INTERNET_FLAG_RELOAD;
+    hService := InternetOpenUrl(hSession, PChar(URLadr), nil, 0, dwFlag, 0);
+    if Assigned(hService ) then
     begin
-      //リダイレクト後のURLで再度Headメソッドを実行して情報取得
-      IdHTTP.Head(IdHTTP.Response.Location);
-    end;
-    if not ret then
-    begin
-      IdURL := IdHTTP.URL.URI;
+      RBuff := TMemoryStream.Create;
       try
-        IdHTTP.Get(IdURL, rbuff);
-      except
-        //取得に失敗した場合、再度取得を試みる
+        lpBuffer := AllocMem(65536);
         try
-          IdHTTP.Get(IdURL, rbuff);
-        except
-          Result := '';
+          dwBytesRead := 65535;
+          while True do
+          begin
+            if InternetReadFile(hService, lpBuffer, 65535,{SizeOf(lpBuffer),}dwBytesRead) then
+            begin
+              if dwBytesRead = 0 then
+                break;
+              RBuff.WriteBuffer(lpBuffer^, dwBytesRead);
+            end else
+              break;
+          end;
+        finally
+          FreeMem(lpBuffer);
         end;
+        TBuff := TStringList.Create;
+        try
+          RBuff.Position := 0;
+          TBuff.LoadFromStream(RBuff, TEncoding.UTF8);
+          Result := TBuff.Text;
+        finally
+          TBuff.Free;
+        end;
+      finally
+        RBuff.Free;
       end;
     end;
-    IdHTTP.Disconnect;
-    rbuff.Position := 0;
-    tbuff.LoadFromStream(rbuff, TEncoding.UTF8);
-    Result := tbuff.Text;
-  finally
-    tbuff.Free;
-    rbuff.Free;
+    InternetCloseHandle(hService);
   end;
 end;
 
@@ -275,9 +271,10 @@ end;
 // 2)&#x????; → 通常の文字
 function Restore2RealChar(Base: string): string;
 var
-  tmp, cd: string;
+  tmp, cd, rcd: string;
   w, mp, ml: integer;
   ch: Char;
+  wch: WideChar;
   r: TRegExpr;
 begin
   // エスケープされた文字
@@ -315,6 +312,25 @@ begin
         UTF8Insert(ch, tmp, mp);
         r.InputString := tmp;
       until not r.Exec;
+    end;
+    // unicodeエスケープ文字(\uxxxx)
+    r.Expression  := '\\u[0-9A-Fa-f]{4}';
+    r.InputString := tmp;
+    if r.Exec then
+    begin
+      repeat
+        cd := r.Match[0];
+        rcd := '\' + cd;
+        UTF8Delete(cd, 1, 2);   // \uを削除する
+        UTF8Insert('$', cd, 1); // 先頭に16進数接頭文字$を追加する
+        try
+          w := StrToInt(cd);
+          wch := Char(w);
+        except
+          wch := '？';
+        end;
+        tmp := ReplaceRegExpr(rcd, tmp, wch);
+      until not r.ExecNext;
     end;
   finally
     r.Free;
@@ -433,7 +449,7 @@ end;
 
 // ****************************************************************************
 //
-// 小説情報にアクセスして小説が完結、連載中、中断のいづれかを取得する
+// 小説情報にアクセスして小説が完結、連載中、中断、短編のいずれかを返す
 //
 // ****************************************************************************
 function GetNovelStatus(NiURL: string): string;
@@ -447,7 +463,11 @@ var
   end;
 begin
   Result := '';
-  str := LoadHTMLbyIndy(NiURL);
+  if isOver18 then
+    if not InternetSetCookieW(PWideChar(NiURL), PWideChar('over18'), PWideChar('yes')) then
+      Writeln(#13#10'Cookieの設定に失敗しました.');
+
+  str := LoadFromHTML(NiURL);
   if UTF8Length(str) =0 then
     Exit;
   if UTF8Pos('">短編</span>', str) > 0 then
@@ -496,7 +516,7 @@ end;
 //
 procedure LoadEachPage;
 var
-  i, n, cnt, sc, st, cc: integer;
+  i, j, n, cnt, sc, st, cc: integer;
   pinfo: TStringList;
   line: string;
   CSBI: TConsoleScreenBufferInfo;
@@ -530,17 +550,23 @@ begin
       if hWnd <> 0 then
         SendMessage(hWnd, WM_DLINFO, n, 1);
       pinfo.CommaText := PageList.Strings[i];
-      line := LoadHTMLbyIndy(pinfo.Strings[0]);
-      if line <> '' then
+      for j := 0 to 2 do
       begin
-        if pinfo.Strings[1] <> '' then
-          PBody := PBody + AO_CPB + ChangeAozoraTag(Restore2RealChar(TrimJ(pinfo.Strings[1]))) + AO_CPE + #13#10;
-        if pinfo.Strings[2] <> '' then
-          PBody := PBody + AO_SEB + ChangeAozoraTag(Restore2RealChar(TrimJ(pinfo.Strings[2]))) + AO_SEE + #13#10;
-        if pinfo.Strings[3] <> '' then
-          PBody := PBody + AO_RAB + AO_KKL + pinfo.Strings[3] + #13#10 + AO_KKR + AO_RAE + #13#10;
-        ParsePage(line);
-        Inc(cc);
+        line := LoadFromHTML(pinfo.Strings[0]);
+        if line <> '' then
+        begin
+          if pinfo.Strings[1] <> '' then
+            PBody := PBody + AO_CPB + ChangeAozoraTag(Restore2RealChar(TrimJ(pinfo.Strings[1]))) + AO_CPE + #13#10;
+          if pinfo.Strings[2] <> '' then
+            PBody := PBody + AO_SEB + ChangeAozoraTag(Restore2RealChar(TrimJ(pinfo.Strings[2]))) + AO_SEE + #13#10;
+          if pinfo.Strings[3] <> '' then
+            PBody := PBody + AO_RAB + AO_KKL + pinfo.Strings[3] + #13#10 + AO_KKR + AO_RAE + #13#10;
+          ParsePage(line);
+          Inc(cc);
+          Break;
+        end;
+        Write('各話を取得中 [' + Format('%3d', [i + 1]) + '/' + Format('%3d', [cnt]) +']・・・リトライ中');
+        Sleep(200);
       end;
       // サーバー側に負担をかけないため0.4秒のインターバルを入れる
       Sleep(400);
@@ -773,7 +799,7 @@ begin
       // もう目次はないが次の目次ページがある場合は次ページの目次を取得する
   	  end else if ExecRegExpr(SNEXTCT, Line) then
       begin
-        Line := LoadHTMLbyIndy(URL + '?p=' + IntToStr(ConteP));
+        Line := LoadFromHTML(URL + '?p=' + IntToStr(ConteP));
         if Line <> '' then
         begin
           ps := UTF8Pos('<div class="p-eplist">', Line);
@@ -821,87 +847,16 @@ begin
   Result := True;
 end;
 
-function GetVersionInfo(const AFileName:string): string;
-var
-  InfoSize:DWORD;
-  SFI:string;
-  Buf,Trans,Value:Pointer;
-begin
-  Result := '';
-  if AFileName = '' then Exit;
-  InfoSize := GetFileVersionInfoSize(PChar(AFileName),InfoSize);
-  if InfoSize <> 0 then
-  begin
-    GetMem(Buf,InfoSize);
-    try
-      if GetFileVersionInfo(PChar(AFileName),0,InfoSize,Buf) then
-      begin
-        if VerQueryValue(Buf,'\VarFileInfo\Translation',Trans,InfoSize) then
-        begin
-          SFI := Format('\StringFileInfo\%4.4x%4.4x\FileVersion',
-                 [LOWORD(DWORD(Trans^)),HIWORD(DWORD(Trans^))]);
-          if VerQueryValue(Buf,PChar(SFI),Value,InfoSize) then
-            Result := PChar(Value)
-          else Result := 'UnKnown';
-        end;
-      end;
-    finally
-      FreeMem(Buf);
-    end;
-  end;
-end;
-
-// OpenSSLが使用出来るかどうかチェックする
-function CheckOpenSSL: Boolean;
-var
-  hnd: THandle;
-begin
-  Result := True;
-  hnd := LoadLibrary('libeay32.dll');
-  if hnd = 0 then
-    Result := False
-  else
-    FreeLibrary(hnd);
-  hnd := LoadLibrary('ssleay32.dll');
-  if hnd = 0 then
-    Result := False
-  else
-    FreeLibrary(hnd);
-end;
-
 var
   i: integer;
   op, df, dy: string;
-  asource: TStringStream;
   t: TextFile;
 
 begin
-  // OpenSSLライブラリをチェック
-  if not CheckOpenSSL then
-  begin
-    Writeln('');
-    Writeln('na6dlを使用するためのOpenSSLライブラリが見つかりません.');
-    Writeln('以下のサイトからopenssl-1.0.2u-x64_86-win64.zipをダウンロードしてlibeay32.dllとssleay32.dllをna6dl.exeがあるフォルダにコピーして下さい.');
-    Writeln('https://github.com/IndySockets/OpenSSL-Binaries');
-    ExitCode := 2;
-    Exit;
-  end;
-  // OpenSSLのバージョンをチェック
-  if (UTF8Pos('1.0.2', GetVersionInfo('libeay32.dll')) = 0)
-    or (UTF8Pos('1.0.2', GetVersionInfo('ssleay32.dll')) = 0) then
-  begin
-    Writeln('');
-    Writeln('OpenSSLライブラリのバージョンが違います.');
-    Writeln('以下のサイトからopenssl-1.0.2u-x64_86-win64.zipをダウンロードしてlibeay32.dllとssleay32.dllをna6dl.exeがあるフォルダにコピーして下さい.');
-    Writeln('https://github.com/IndySockets/OpenSSL-Binaries');
-    ExitCode := 2;
-    Exit;
-  end;
-
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver4.1 2025/4/10 (c) INOUE, masahiro.');
+    Writeln('na6dl ver4.2 2025/5/17 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
@@ -980,78 +935,50 @@ begin
 
   isOver18 := UTF8Pos('https://novel18.syosetu.com/n', URL) > 0;
 
-  IdHTTP := TIdHTTP.Create(nil);
-  IdSSL := TIdSSLIOHandlerSocketOpenSSL.Create;
-  Cookies := TIdCookieManager.Create(nil);
-  try
-    IdSSL.IPVersion := Id_IPv4;
-    IdSSL.MaxLineLength := 32768;
-    IdSSL.SSLOptions.Method := sslvSSLv23;
-    IdSSL.SSLOptions.SSLVersions := [sslvSSLv2,sslvTLSv1];
-    IdHTTP.HandleRedirects := True;
-    IdHTTP.AllowCookies := True;
-    IdHTTP.IOHandler := IdSSL;
-    // user-agentをMicrosoft Edgeにする
-    IdHTTP.Request.UserAgent := 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36 Edg/79.0.309.65';
-    // IdHTTPインスタンスにover18=yesのキャッシュを設定する
-    if isOver18 then
-    begin
-      IdHTTP.CookieManager := TIdCookieManager.Create(IdHTTP);
-      URI := TIdURI.Create('https://novel18.syosetu.com/');
-      try
-        IdHTTP.CookieManager.AddServerCookie('over18=yes', URI);
-      finally
-        URI.Free;
-      end;
-      asource := TStringStream.Create;
-      try
-        IdHTTP.Post('https://novel18.syosetu.com/', asource);
-      finally
-        asource.Free;
-      end;
-    end;
-    DLErr := '';
-    Capter := '';
-    TextLine := LoadHTMLbyIndy(URL);
-    if TextLine <> '' then
-    begin
-      PageList := TStringList.Create;
-      TextPage := TStringList.Create;
-      LogFile  := TStringList.Create;
-      try
-        if ParseChapter(TextLine) then          // 小説の目次情報を取得
-        begin
-          // 短編でなければ各話を取得する
-          if PageList.Count >= StartN then
-            LoadEachPage;                       // 小説各話情報を取得
-          try
-            TextPage.Text := PBody;
-            TextPage.WriteBOM := True;
-            LogFile.WriteBOM := True;
-            TextPage.SaveToFile(DLErr + Filename, TEncoding.UTF8);
-            LogFile.SaveToFile(ChangeFileExt(FileName, '.log'), TEncoding.UTF8);
-            Writeln(ExtractFileName(Filename) + ' に保存しました.');
-          except
-            ExitCode := -1;
-            Writeln('ファイルの保存に失敗しました.');
-          end;
-        end else begin
-          Writeln(URL + 'から作品情報を取得できませんでした.');
+  // IdHTTPインスタンスにover18=yesのキャッシュを設定する
+  if isOver18 then
+  begin
+    // なろうR18作品アクセス用Cookie
+    if not InternetSetCookieW(PWideChar(URL), PWideChar('over18'), PWideChar('yes')) then
+      Writeln(#13#10'Cookieの設定に失敗しました.');
+  end;
+  DLErr := '';
+  Capter := '';
+  TextLine := LoadFromHTML(URL);
+  if TextLine <> '' then
+  begin
+    PageList := TStringList.Create;
+    TextPage := TStringList.Create;
+    LogFile  := TStringList.Create;
+    try
+      if ParseChapter(TextLine) then          // 小説の目次情報を取得
+      begin
+        // 短編でなければ各話を取得する
+        if PageList.Count >= StartN then
+          LoadEachPage;                       // 小説各話情報を取得
+        try
+          TextPage.Text := PBody;
+          TextPage.WriteBOM := True;
+          LogFile.WriteBOM := True;
+          TextPage.SaveToFile(DLErr + Filename, TEncoding.UTF8);
+          LogFile.SaveToFile(ChangeFileExt(FileName, '.log'), TEncoding.UTF8);
+          Writeln(ExtractFileName(Filename) + ' に保存しました.');
+        except
           ExitCode := -1;
+          Writeln('ファイルの保存に失敗しました.');
         end;
-      finally
-        LogFile.Free;
-        PageList.Free;
-        TextPage.Free;
+      end else begin
+        Writeln(URL + 'から作品情報を取得できませんでした.');
+        ExitCode := -1;
       end;
-    end else begin
-      Writeln(URL + 'からHTMLソースを取得できませんでした.');
-      ExitCode := -1;
+    finally
+      LogFile.Free;
+      PageList.Free;
+      TextPage.Free;
     end;
-  finally
-    IdSSL.Free;
-    IdHTTP.Free;
-    Cookies.Free;
+  end else begin
+    Writeln(URL + 'からHTMLソースを取得できませんでした.');
+    ExitCode := -1;
   end;
 end.
 
