@@ -5,13 +5,12 @@ na6dlは小説家になろうおよび姉妹サイトで公開されている小
 Windows10/11上のコマンドプロンプト上で動作します。
 
 ### 実行に必要なファイル
-na6dl.exeの実行にはopenssl-1.0.2が必要です。ssleay32.dllとlibeay32.dllがna6dl.exeと同じディレクトリー内もしくはPATHの通った場所にある必要があります。
-https://github.com/IndySockets/OpenSSL-Binaries
+ver4.2からopenssl-1.0.2は不要となりました。
 
 ### 実行ファイルの作り方
-・Delphi (XE2以降)の場合：na6dl.dprojを開いてビルドしてください。尚、ビルドするためにはIndy10ライブラリとTregExprライブラリが必要です。
+・Delphi (XE2以降)の場合：na6dl.dprojを開いてビルドしてください。尚、ビルドするためにはTregExprライブラリが必要です。
 
-・Lazarus（3.2以降）の場合：na6dl.lpiを開いてビルドして下さい。尚、ビルドするためにはIndy10ライブラリとTregExprライブラリが必要です。
+・Lazarus（3.2以降）の場合：na6dl.lpiを開いてビルドして下さい。尚、ビルドするためにはTregExprライブラリが必要です。
 
 ・TregExprライブラリ：https://github.com/andgineer/TRegExpr
 
