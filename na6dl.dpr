@@ -1,6 +1,9 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  4.3 2025/06/04  タイトルをファイル名に変換するフィルタをAnsiStringからWideString(UTF16)に変更した
+                  タイトルをファイル名に変換する前に青空文庫形式エスケープ文字をデコードする様にした
+                  ログファイルの文章は青空文庫形式エスケープ文字をデコードした状態で保存するようにした
   4.2 2025/05/17  WinINetにMicrosoft EdgeのUse-Agentを設定したらダウンロード出来るようになったのでIndyからWinInetに戻した
                   各話DL時にエラーが起こった場合に二回再DLを試みるようにした
   4.1 2025/04/10  IndyのUser-AgentにMicrosoft Edgeを設定するようにした
@@ -218,19 +221,23 @@ end;
 // タイトル名にファイル名として使用出来ない文字を'-'に置換する
 // Lazarus(FPC)とDelphiで文字コード変換方法が異なるためコンパイル環境で
 // 変換処理を切り替える
-function PathFilter(PassName: string): string;
+function PathFilter(PathName: string): string;
 var
-  path: string;
-  tmp: AnsiString;
+  path, tmp: string;
+  wstr: WideString;
 begin
+  // タイトル内の文字が青空文庫形式でエスケープされている場合は元に戻す
+  tmp := UTF8StringReplace(PathName,  '※［＃始め二重山括弧、1-1-52］',   '《', [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,       '※［＃終わり二重山括弧、1-1-53］', '》', [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,       '※［＃縦線、1-1-35］',             '｜', [rfReplaceAll]);
   // ファイル名を一旦ShiftJISに変換して再度Unicode化することでShiftJISで使用
   // 出来ない文字を除去する
 {$IFDEF FPC}
-  tmp  := UTF8ToWinCP(PassName);
-  path := WinCPToUTF8(tmp);      // これでUTF-8依存文字は??に置き換わる
+  wstr := UTF8ToUTF16(tmp);
+  path := UTF16ToUTF8(wstr);      // これでUTF-8依存文字は??に置き換わる
 {$ELSE}
-  tmp  := AnsiString(PassName);
-	path := string(tmp);
+  wstr := WideString(tmp);
+	path := string(wstr);
 {$ENDIF}
   // ファイル名として使用できない文字を'-'に置換する
   path := ReplaceRegExpr('[\\/:;\*\?\+,."<>|\.\t ]', path, '-');
@@ -374,6 +381,15 @@ begin
   Result := line;
 end;
 
+function RestoreAOEsc(Src: string): string;
+var
+  tmp: string;
+begin
+  tmp := UTF8StringReplace(Src, '※［＃始め二重山括弧、1-1-52］',   '《', [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '※［＃終わり二重山括弧、1-1-53］', '》', [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '※［＃縦線、1-1-35］',             '｜', [rfReplaceAll]);
+  Result := tmp;
+end;
 // ****************************************************************************
 //
 // １話ページの構文を解析して本文を取り出す
@@ -673,7 +689,7 @@ begin
   begin
   	//auth := Restore2Realchar(UTF8Copy(Line, 1, ps - 1));
     // タイトル、作者名を保存
-    PBody := title + #13#10 + auth + #13#10 + AO_PB2 + #13#10;
+    PBody := ChangeAozoraTag(title) + #13#10 + ChangeAozoraTag(auth) + #13#10 + AO_PB2 + #13#10;
     LogFile.Add('小説URL :' + URL);
     LogFile.Add('タイトル:' + title);
     LogFile.Add('作者　　:' + auth);
@@ -699,7 +715,7 @@ begin
     if synop <> '' then
     begin
       LogFile.Add('あらすじ');
-      LogFile.Add(synop);
+      LogFile.Add(RestoreAOEsc(synop));
       LogFile.Add('');
       // EConvertError回避
       try
@@ -856,7 +872,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver4.2 2025/5/17 (c) INOUE, masahiro.');
+    Writeln('na6dl ver4.3 2025/6/4 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
