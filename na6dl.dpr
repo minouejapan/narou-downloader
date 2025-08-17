@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  4.4 2025/08/17  ログファイルに作品の掲載日と最終掲載日(連載中のものは最新掲載日)を追加した
   4.3 2025/06/04  タイトルをファイル名に変換するフィルタをAnsiStringからWideString(UTF16)に変更した
                   タイトルをファイル名に変換する前に青空文庫形式エスケープ文字をデコードする様にした
                   ログファイルの文章は青空文庫形式エスケープ文字をデコードした状態で保存するようにした
@@ -142,7 +143,8 @@ var
   StartN,
   ConteP,
   LimitDay: integer;
-  DLErr: string;
+  DLErr,
+  NvlInfo: string;
 
 
 // WinINetを用いたHTMLファイルのダウンロード
@@ -479,6 +481,8 @@ var
   end;
 begin
   Result := '';
+  NvlInfo := '';
+
   if isOver18 then
     if not InternetSetCookieW(PWideChar(NiURL), PWideChar('over18'), PWideChar('yes')) then
       Writeln(#13#10'Cookieの設定に失敗しました.');
@@ -499,6 +503,36 @@ begin
     Result := '【完結】';     // 完結済のシンボルテキストを返す
     Exit;
   end;
+  // 掲載日情報
+  ps := UTF8Pos('<dt class="p-infotop-data__title">掲載日</dt>', str);
+  if ps > 0 then
+  begin
+    UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">掲載日</dt>') - 1);
+    ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
+    if ps > 0 then
+    begin
+      UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
+      pe    := UTF8Pos('</dd>', str);
+      stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
+      stat  := FormatDate(stat);
+      NvlInfo := '掲載日　　：' + stat;
+    end;
+  end;
+  // 掲載日情報
+  ps := UTF8Pos('<dt class="p-infotop-data__title">最終掲載日</dt>', str);
+  if ps > 0 then
+  begin
+    UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">最終掲載日</dt>') - 1);
+    ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
+    if ps > 0 then
+    begin
+      UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
+      pe    := UTF8Pos('</dd>', str);
+      stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
+      stat  := FormatDate(stat);
+      NvlInfo := NvlInfo + #13#10'最終掲載日：' + stat;
+    end;
+  end;
   // 完結済みでない場合は最新更新日時を確認して連載中なのか中断かを判断する
   ps := UTF8Pos('<dt class="p-infotop-data__title">最新掲載日</dt>', str);
   if ps > 0  then
@@ -511,6 +545,7 @@ begin
       pe    := UTF8Pos('</dd>', str);
       stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
       stat  := FormatDate(stat);
+      NvlInfo := NvlInfo + #13#10'最新掲載日：' + stat;
       // EConvertError回避
       try
         upd   := StrToDateTime(stat);
@@ -690,11 +725,12 @@ begin
   	//auth := Restore2Realchar(UTF8Copy(Line, 1, ps - 1));
     // タイトル、作者名を保存
     PBody := ChangeAozoraTag(title) + #13#10 + ChangeAozoraTag(auth) + #13#10 + AO_PB2 + #13#10;
-    LogFile.Add('小説URL :' + URL);
-    LogFile.Add('タイトル:' + title);
-    LogFile.Add('作者　　:' + auth);
+    LogFile.Add('小説URL 　:' + URL);
+    LogFile.Add('タイトル　:' + title);
+    LogFile.Add('作者　　　:' + auth);
     if authurl <> '' then
-      LogFile.Add('作者URL : ' + authurl);
+      LogFile.Add('作者URL　 : ' + authurl);
+    LogFile.Add(NvlInfo); // 掲載日情報
 	end else
   	Exit;
 
@@ -872,7 +908,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver4.3 2025/6/4 (c) INOUE, masahiro.');
+    Writeln('na6dl ver4.4 2025/8/17 (c) INOUE, masahiro.');
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
