@@ -76,6 +76,7 @@ uses
   WinINet;
 
 const
+  VERSION = 'na6dl ver4.5 2025/8/20 (c) INOUE, masahiro.';
   // データ抽出用の識別タグ
   // 識別タグのほとんどはソース内に直接埋め込んだため削除した
   SNEXTCT  = '<a href=\".*?\" class=\"c-pager__item c-pager__item--next\">次へ<\/a>';  // 目次の次ページ
@@ -910,7 +911,7 @@ begin
   if ParamCount = 0 then
   begin
     Writeln('');
-    Writeln('na6dl ver4.4 2025/8/17 (c) INOUE, masahiro.');
+    Writeln(VERSION);
     Writeln('  使用方法');
     Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
     Exit;
