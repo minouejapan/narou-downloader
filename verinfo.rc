@@ -1,6 +1,6 @@
 
 1 VERSIONINFO
-FILEVERSION 4,4,0,0
+FILEVERSION 4,5,0,0
 PRODUCTVERSION 4,5,0,0
 FILEOS 0x4
 FILETYPE 0x1
@@ -12,11 +12,11 @@ BLOCK "StringFileInfo"
     VALUE "Comments", "なろう系小説ダウンローダー"
     VALUE "CompanyName", ""
     VALUE "FileDescription", "なろう系小説ダウンローダー"
-		VALUE "FileVersion", "4.4.0.0"
+		VALUE "FileVersion", "4.5.0.0"
 		VALUE "LegalCopyright", "INOUE, masahiro"
 		VALUE "OriginalFilename", "na6dl.exe"
 		VALUE "ProductName", "na6dl"
-		VALUE "ProductVersion", "4.4"
+		VALUE "ProductVersion", "4.5"
 	}
 }
 

@@ -1,6 +1,7 @@
 ﻿(*
   小説家になろう小説ダウンローダー
 
+  4.5 2025/08/20  完結済みの場合ログファイルに作品の掲載日と最終掲載日が記録されない不具合を修正した
   4.4 2025/08/17  ログファイルに作品の掲載日と最終掲載日(連載中のものは最新掲載日)を追加した
   4.3 2025/06/04  タイトルをファイル名に変換するフィルタをAnsiStringからWideString(UTF16)に変更した
                   タイトルをファイル名に変換する前に青空文庫形式エスケープ文字をデコードする様にした
@@ -501,7 +502,7 @@ begin
   if ps > 0 then
   begin
     Result := '【完結】';     // 完結済のシンボルテキストを返す
-    Exit;
+    //Exit;
   end;
   // 掲載日情報
   ps := UTF8Pos('<dt class="p-infotop-data__title">掲載日</dt>', str);
@@ -532,32 +533,33 @@ begin
       stat  := FormatDate(stat);
       NvlInfo := NvlInfo + #13#10'最終掲載日：' + stat;
     end;
-  end;
-  // 完結済みでない場合は最新更新日時を確認して連載中なのか中断かを判断する
-  ps := UTF8Pos('<dt class="p-infotop-data__title">最新掲載日</dt>', str);
-  if ps > 0  then
-  begin
-    UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">最新掲載日</dt>') - 1);
-    ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
-    if ps > 0 then
+  end else begin
+    // 完結済みでない場合は最新更新日時を確認して連載中なのか中断かを判断する
+    ps := UTF8Pos('<dt class="p-infotop-data__title">最新掲載日</dt>', str);
+    if ps > 0  then
     begin
-      UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
-      pe    := UTF8Pos('</dd>', str);
-      stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
-      stat  := FormatDate(stat);
-      NvlInfo := NvlInfo + #13#10'最新掲載日：' + stat;
-      // EConvertError回避
-      try
-        upd   := StrToDateTime(stat);
-      except
-        upd := Yesterday;
+      UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">最新掲載日</dt>') - 1);
+      ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
+      if ps > 0 then
+      begin
+        UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
+        pe    := UTF8Pos('</dd>', str);
+        stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
+        stat  := FormatDate(stat);
+        NvlInfo := NvlInfo + #13#10'最新掲載日：' + stat;
+        // EConvertError回避
+        try
+          upd   := StrToDateTime(stat);
+        except
+          upd := Yesterday;
+        end;
+        tdy   := Today;
+        dd    := DaysBetween(tdy, upd); // 最新掲載日から現在までの経過日数を取得する
+        if dd > LimitDay then
+          Result := '【中断】'   // 60日以上更新されていなければ中断のシンボルテキストを返す
+        else
+          Result := '【連載中】';
       end;
-      tdy   := Today;
-      dd    := DaysBetween(tdy, upd); // 最新掲載日から現在までの経過日数を取得する
-      if dd > LimitDay then
-        Result := '【中断】'   // 60日以上更新されていなければ中断のシンボルテキストを返す
-      else
-        Result := '【連載中】';
     end;
   end;
 end;
