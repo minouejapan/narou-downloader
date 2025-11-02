@@ -1,911 +1,378 @@
 ﻿(*
-  小説家になろう小説ダウンローダー
+  小説家になろう小説ダウンローダー(SHParserによる書き直し版)
 
-  4.5 2025/08/20  完結済みの場合ログファイルに作品の掲載日と最終掲載日が記録されない不具合を修正した
-  4.4 2025/08/17  ログファイルに作品の掲載日と最終掲載日(連載中のものは最新掲載日)を追加した
-  4.3 2025/06/04  タイトルをファイル名に変換するフィルタをAnsiStringからWideString(UTF16)に変更した
-                  タイトルをファイル名に変換する前に青空文庫形式エスケープ文字をデコードする様にした
-                  ログファイルの文章は青空文庫形式エスケープ文字をデコードした状態で保存するようにした
-  4.2 2025/05/17  WinINetにMicrosoft EdgeのUse-Agentを設定したらダウンロード出来るようになったのでIndyからWinInetに戻した
-                  各話DL時にエラーが起こった場合に二回再DLを試みるようにした
-  4.1 2025/04/10  IndyのUser-AgentにMicrosoft Edgeを設定するようにした
-  4.0 2025/03/05  作品情報ページのHTML構成が変更されたため連載状況取得部分を修正した
-  3.91     03/03  ファイル名に使用できない文字から漏れていた"<>の処理を追加した
-  3.9 2025/02/23  作者URLがない場合の作者名がうまく取得出来なかった不具合を修正した
-  3.8 2025/02/13  短編の作者名がおかしかった不具合を修正した
-  3.7 2025/02/08  日付変換でEConvertErrorが発生する場合がある不具合に対処した
-                  &#????;にエンコードされた文字のデコード処理の不具合を修正した
-  3.6 2025/01/30  作品情報が読み込めなくなったためファイルを保存出来なくなった不具合を修正した
-  3.5 2024/12/10  作者URLが設定されていない場合、作者名をうまく取得出来なかった不具合を修正した
-  3.4 2024/11/25  短編作品のタイトルに"短編"が入っているとダウンロード出来なかった不具合を修正した
-  3.3 2024/11/24  -sオプションで最終エピソードを指定した場合ダウンロード出来なかった不具合を修正した
-  3.2 2024/09/20  なろうのHTML構成が変更されてDL出来なくなったため修正した
-  3.1 2024/09/04  ダウンロード出来ない作品があったため文字列が空かどうかのチェック方法を修正した
-	3.0	2024/07/18	Lazarus/Delphiどちらでもビルド出来るようにした
-                  文字列が空かどうかのチェックが抜けている箇所がありメモリアクセス違反が発生することがあった不具合を修正した
-  2.8 2024/06/28  Githubにあげるためソースコードを整理した
-                  小説家になろうサーバーへの負荷を減らすためDL1話毎のインターバルを0.2→0.4秒にした
-  2.7 2024/06/14  本文中の<>を余計なHTMLタグとして除去してしまう不具合を修正した
-                  &#????;にエンコードされた文字のデコード処理をkakuyomudlと同じにした
-  2.6 2024/05/14  各話見出しへの青空文庫タグ挿入時に改行コードが入る場合があった不具合を修正した
-  2.5 2024/05/06  ルビ装飾タグの代替え表示用カッコに《》が指定されている場合青空文庫タグへの変換が誤作動する不具合を修正した
-  2.4 2024/04/30  ルビ装飾用のタグが変更されて正しく青空文庫形式ルビタグに変換されなくなっていた不具合を修正した
-  2.3 2024/03/27  作品情報の「最新部分掲載日」が「最新掲載日」に変更されていて進捗情報の連載中と
-                  中断を判定できなかった不具合を修正した
-                  na6dl.exeと同じフォルダ内に中断を判定するための日数を記したna6dl.cfgファイルが
-                  あればその日数を基に連載中か中断かを判定するようにした
-  2.2 2024/03/10  連載状況取得処理をIndyライブラリに変更しておらず情報を取得出来ていなかった不具合を修正した
-  2.1 2024/03/09  R18系のDLに対応するためIdHTTPにクッキーを保存する処理を追加した
-  2.0 2024/03/08  ダウンロード出来なくなった問題に対応するためHTML取得をWinINETからIndyライブラリに
-                  変更した。但し、現時点R18系のDLは出来ない
-  1.9 2024/01/24  トップページの目次が100話単位で複数ページにまたがるようになった仕様変更に対応した
-  1.8 2023/11/26  作品の進捗状況を取得出来なくなっていた不具合を修正した
-  1.7 2023/09/02  DL開始ページ指定に対応した際の副作用で短編がダウンロード出来なくなっていた不具合を修正した
-  1.6 2023/08/29  タイトルと作者名の《》を青空文庫タグにエンコードする処理を追加した
-                  章・話タイトルへの》青空文庫タグエンコード、HTML特殊文字デコード処理を追加した
-  1.5 2023/08/23  タイトル名に含まれるエンコード記号をデコードしていなかった不具合を修正した
-  1.4 2023/08/19  ルビ指定HTMLタグに《》が使われている場合があり青空文庫タグへの変換が誤作動していた
-                  不具合を修正した
-  1.3 2023/08/07  DL開始ページを指定した場合のNaro2mobiに送るDLページ数が1少なかった不具合を修正した
-                  短編の場合Naro2mobiに作品情報を送信していなかった不具合を修正した
-  1.2 2023/07/23  オプション引数確認処理を変更し、DL開始ページ指定オプション-sを追加した
-  1.1 2023/07/10  章・話タイトルに半角スペースが含まれているとタイトルが途切れる不具合を修正した
-  1.0 2023/06/28  Naro2mobi内臓のダウンロード処理部分を単独のダウンローダーとして切り出した
+  Delphi XE2以降およびLazarus3.6以降でコンパイルが可能
+  またLazarusではLinux用の実行ファイルも構築が可能
+
+  必要なライブラリ：
+    SHParser:https://github.com/minouejapan/SimpleHTMLParser
+    TRegExpr:https://github.com/andgineer/TRegExpr
+
+    ver5.11 2025/11/02  Delphi対応が不完全だったためNaro2mobiにメッセージを送信出来ていなかった不具合を修正した
+    ver5.1  2025/11/01  本文の改行が削除されていた不具合を修正した
+                        Delphiでコンパイルできなかった不具合を修正した
+    ver5.0  2025/10/30  na6dl ver5.0としてプロジェクトを更新した
+
+    ver4.5までの更新履歴はna6dl_old.dprを参照
+
 *)
 program na6dl;
 
 {$APPTYPE CONSOLE}
 
 {$IFDEF FPC}
-  {$MODE Delphi}
-  {$codepage utf8}
+  {$MODE DELPHI}
+  {$CODEPAGE UTF8}
 {$ENDIF}
 
-{$R *.res}
-{$R 'verinfo.res' 'verinfo.rc'}
-{$R *.dres}
+// DelphiとLazarusでWINDOWSの定義が違うため改めてMSWINを定義する
+{$IFDEF WINDOWS}
+  {$DEFINE MSWIN}
+{$ENDIF}
+{$IFDEF MSWINDOWS}
+  {$DEFINE MSWIN}
+{$ENDIF}
 
 uses
-  LazUTF8wrap,
-  System.SysUtils,
-  System.Classes,
-  System.DateUtils,
-  WinAPI.Messages,
+  Classes,
+  SysUtils,
+  RegExpr,
+{$IFDEF MSWIN}
   Windows,
-  regexpr,
-  WinINet;
+  Messages,
+{$ENDIF}
+  UniHtml,
+  SHParser,
+{$IFDEF FPC}
+  LazUTF8
+{$ELSE}
+  LazUTF8wrap
+{$ENDIF}
+  ;
+(* このブロックはDelphiでプロジェクト構成を変えると中途半端に整形・削除されることがあるため要注意
+   念のため削除されても復活できるようにコメントで残す
+{$IFDEF FPC}
+  LazUTF8
+{$ELSE}
+  LazUTF8wrap
+{$ENDIF}
+  ;
+*)
+
+{$R *.res}
+{$R na6dlver.res}
+
+type
+  TNvStat = record    // 作品情報保存用
+    NvlStat,          // 連載状況
+    AuthURL,          // 作者URL
+    FstDate,          // 掲載日
+    LstDate,          // 最終掲載日
+    FnlDate,          // 差新掲載日
+    LupDate: string;  // 最終更新日
+    TotalPg: integer; // 総ページ数
+  end;
 
 const
-  VERSION = 'na6dl ver4.5 2025/8/20 (c) INOUE, masahiro.';
-  // データ抽出用の識別タグ
-  // 識別タグのほとんどはソース内に直接埋め込んだため削除した
-  SNEXTCT  = '<a href=\".*?\" class=\"c-pager__item c-pager__item--next\">次へ<\/a>';  // 目次の次ページ
-  SBODY1   = '<div class="js-novel-text p-novel__text p-novel__text--preface".*?>';
-  SBODY2   = '<div class="js-novel-text p-novel__text".*?>';
-  SBODY3   = '<div class="js-novel-text p-novel__text p-novel__text--afterword".*?>';
-  SBODYB   = '<p id="p1"';
-  SBODYM   = '>';
-  SBODYE   = '</div>';
-
-
-  // 青空文庫形式
-  AO_RBI = '｜';							// ルビのかかり始め(必ずある訳ではない)
-  AO_RBL = '《';              // ルビ始め
-  AO_RBR = '》';              // ルビ終わり
-  AO_TGI = '［＃';            // 青空文庫書式設定開始
-  AO_TGO = '］';              //        〃       終了
-  AO_CPI = '［＃「';          // 見出しの開始
-  AO_CPT = '」は大見出し］';	// 章
-  AO_SEC = '」は中見出し］';  // 話
-  AO_PRT = '」は小見出し］';
-
-  AO_CPB = '［＃大見出し］';        // 2022/12/28 こちらのタグに変更
-  AO_CPE = '［＃大見出し終わり］';
-  AO_SEB = '［＃中見出し］';
-  AO_SEE = '［＃中見出し終わり］';
-  AO_PRB = '［＃小見出し］';
-  AO_PRE = '［＃小見出し終わり］';
-
-  AO_DAI = '［＃ここから';		// ブロックの字下げ開始
-  AO_DAO = '［＃ここで字下げ終わり］';
-  AO_DAN = '字下げ］';
-  AO_PGB = '［＃改丁］';			// 改丁と会ページはページ送りなのか見開き分の
-  AO_PB2 = '［＃改ページ］';	// 送りかの違いがあるがどちらもページ送りとする
-  AO_SM1 = '」に傍点］';			// ルビ傍点
-  AO_SM2 = '」に丸傍点］';		// ルビ傍点 どちらもsesami_dotで扱う
-  AO_EMB = '［＃丸傍点］';        // 横転開始
-  AO_EME = '［＃丸傍点終わり］';  // 傍点終わり
-  AO_KKL = '［＃ここから罫囲み］' ;     // 本来は罫囲み範囲の指定だが、前書きや後書き等を
-  AO_KKR = '［＃ここで罫囲み終わり］';  // 一段小さい文字で表記するために使用する
-  AO_END = '底本：';          // ページフッダ開始（必ずあるとは限らない）
-  AO_PIB = '［＃リンクの図（';          // 画像埋め込み
-  AO_PIE = '）入る］';        // 画像埋め込み終わり
-  AO_LIB = '［＃リンク（';          // 画像埋め込み
-  AO_LIE = '）入る］';        // 画像埋め込み終わり
-  AO_CVB = '［＃表紙の図（';  // 表紙画像指定
-  AO_CVE = '）入る］';        // 終わり
-  AO_RAB = '［＃右寄せ］';
-  AO_RAE = '［＃右寄せ終わり］';
-  AO_HR  = '［＃水平線］';    // 水平線<hr />
-
-  CRLF   = #$0D#$0A;
-
-// ユーザメッセージID
-  WM_DLINFO  = WM_USER + 30;
-
-
-var
-  PageList,
-  TextPage,
-  LogFile: TStringList;
-  Capter, URL, Path, FileName, TextLine, PBody, StartPage: string;
-  hWnd: THandle;
-  CDS: TCopyDataStruct;
-  isOver18: boolean;
-  StartN,
-  ConteP,
-  LimitDay: integer;
-  DLErr,
-  NvlInfo: string;
-
-
-// WinINetを用いたHTMLファイルのダウンロード
-function LoadFromHTML(URLadr: string): string;
-var
-  hSession    : HINTERNET;
-  hService    : HINTERNET;
-  dwBytesRead : DWORD;
-  dwFlag      : DWORD;
-  lpBuffer    : PChar;
-  RBuff       : TMemoryStream;
-  TBuff       : TStringList;
-  ua: string;
-begin
-  Result   := '';
-  // Use-AgentにMicrosoft Edgeを設定する
-  ua       := 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36';
-  hSession := InternetOpen(PWideChar(ua), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);
-  if Assigned(hSession) then
-  begin
-    InternetSetOption(hSession, INTERNET_OPTION_USER_AGENT, PChar(ua), Length(ua));
-    dwFlag   := INTERNET_FLAG_RELOAD;
-    hService := InternetOpenUrl(hSession, PChar(URLadr), nil, 0, dwFlag, 0);
-    if Assigned(hService ) then
-    begin
-      RBuff := TMemoryStream.Create;
-      try
-        lpBuffer := AllocMem(65536);
-        try
-          dwBytesRead := 65535;
-          while True do
-          begin
-            if InternetReadFile(hService, lpBuffer, 65535,{SizeOf(lpBuffer),}dwBytesRead) then
-            begin
-              if dwBytesRead = 0 then
-                break;
-              RBuff.WriteBuffer(lpBuffer^, dwBytesRead);
-            end else
-              break;
-          end;
-        finally
-          FreeMem(lpBuffer);
-        end;
-        TBuff := TStringList.Create;
-        try
-          RBuff.Position := 0;
-          TBuff.LoadFromStream(RBuff, TEncoding.UTF8);
-          Result := TBuff.Text;
-        finally
-          TBuff.Free;
-        end;
-      finally
-        RBuff.Free;
-      end;
-    end;
-    InternetCloseHandle(hService);
-  end;
-end;
-
-// 全角空白も除去するTrim
-function TrimJ(src: string): string;
-var
-  tmp: string;
-begin
-  Result := src;
-  if Length(src) > 0 then
-  begin
-    tmp := Trim(src);
-    if Length(tmp) > 0 then
-      while UTF8Copy(tmp, 1, 1) = '　' do
-        Delete(tmp, 1, 1);
-    Result := tmp;
-  end;
-end;
-
-// タイトル名にファイル名として使用出来ない文字を'-'に置換する
-// Lazarus(FPC)とDelphiで文字コード変換方法が異なるためコンパイル環境で
-// 変換処理を切り替える
-function PathFilter(PathName: string): string;
-var
-  path, tmp: string;
-  wstr: WideString;
-begin
-  // タイトル内の文字が青空文庫形式でエスケープされている場合は元に戻す
-  tmp := UTF8StringReplace(PathName,  '※［＃始め二重山括弧、1-1-52］',   '《', [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,       '※［＃終わり二重山括弧、1-1-53］', '》', [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,       '※［＃縦線、1-1-35］',             '｜', [rfReplaceAll]);
-  // ファイル名を一旦ShiftJISに変換して再度Unicode化することでShiftJISで使用
-  // 出来ない文字を除去する
-{$IFDEF FPC}
-  wstr := UTF8ToUTF16(tmp);
-  path := UTF16ToUTF8(wstr);      // これでUTF-8依存文字は??に置き換わる
+  VERSION = 'na6dl ver5.1 2025/1/01 INOUE, masahiro';
+// 改行コード
+{$IFDEF LINUX}
+  CRLF = #10;
 {$ELSE}
-  wstr := WideString(tmp);
-	path := string(wstr);
+  CRLF = #13#10;
 {$ENDIF}
-  // ファイル名として使用できない文字を'-'に置換する
-  path := ReplaceRegExpr('[\\/:;\*\?\+,."<>|\.\t ]', path, '-');
+{$IFDEF MSWIN}
+  // ユーザメッセージID
+  WM_DLINFO  = WM_USER + 30;
+{$ENDIF}
 
-  Result := path;
-end;
-
-// id=行番号タグを除去する
-function LTagFilter(SrcText: string): string;
 var
-  line: string;
-begin
-  line := SrcText;
-  // <p id=タグの終端を除去して<br />に置き換える
-  line := UTF8StringReplace(line, '</p>', '<br />', [rfReplaceAll]);
-  // <p id=xxx>を削除する
-  line := ReplaceRegExpr('<p id=.*?>', line, '');
-  Result := line;
-end;
+  TextBuff, LogFile: TStringList;
+  FileName, LogName, StartPage: string;
+  CpTitle: string;
+  CookieName,
+  CookieData: string;
+  hWnd: THandle;
+  StartN: integer;
 
-// 本文の青空文庫ルビタグ文字を代替文字に変換する
-function ChangeAozoraTag(Base: string): string;
+
+// なろう系青空文庫準拠形式エンコード (TSHParserのOnBeforeGetTextから呼ばれる)
+function AozoraDecord(Src: string): string;
 var
   tmp: string;
 begin
-  // ルビの代替え文字に《》が使われていれば最初に変換しておく
-  tmp := UTF8StringReplace(Base, '<rp>《</rp><rt>', '</rb><rp>(</rp><rt>',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '</rt><rp>》</rp></ruby>', '</rt><rp>)</rp></ruby>',  [rfReplaceAll]);
-
-  tmp := UTF8StringReplace(tmp,  '《', '※［＃始め二重山括弧、1-1-52］',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '》', '※［＃終わり二重山括弧、1-1-53］',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '｜', '※［＃縦線、1-1-35］',   [rfReplaceAll]);
-  Result := tmp;
-end;
-
-// HTML特殊文字の処理
-// 1)エスケープ文字列 → 実際の文字
-// 2)&#x????; → 通常の文字
-function Restore2RealChar(Base: string): string;
-var
-  tmp, cd, rcd: string;
-  w, mp, ml: integer;
-  ch: Char;
-  wch: WideChar;
-  r: TRegExpr;
-begin
-  // エスケープされた文字
-  tmp := UTF8StringReplace(Base, '&lt;',      '<',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&gt;',      '>',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&quot;',    '"',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&nbsp;',    ' ',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&yen;',     '\',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&brvbar;',  '|',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&copy;',    '©',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&amp;',     '&',  [rfReplaceAll]);
-  // &#????;にエンコードされた文字をデコードする(2023/3/19)
-  // 正規表現による処理に変更した(2024/3/9)
-  r := TRegExpr.Create;
-  try
-    r.Expression  := '&#.*?;';
-    r.InputString := tmp;
-    if r.Exec then
-    begin
-      repeat
-        cd := r.Match[0];
-        mp := r.MatchPos[0];
-        ml := r.MatchLen[0];
-        UTF8Delete(tmp, mp, ml);
-        UTF8Delete(cd, 1, 2);           // &#を削除する
-        UTF8Delete(cd, UTF8Length(cd), 1);  // 最後の;を削除する
-        if cd[1] = 'x' then         // 先頭が16進数を表すxであればDelphiの16進数接頭文字$に変更する
-          cd[1] := '$';
-        try
-          w := StrToInt(cd);
-          ch := Char(w);
-        except
-          ch := '?';
-        end;
-        UTF8Insert(ch, tmp, mp);
-        r.InputString := tmp;
-      until not r.Exec;
-    end;
-    // unicodeエスケープ文字(\uxxxx)
-    r.Expression  := '\\u[0-9A-Fa-f]{4}';
-    r.InputString := tmp;
-    if r.Exec then
-    begin
-      repeat
-        cd := r.Match[0];
-        rcd := '\' + cd;
-        UTF8Delete(cd, 1, 2);   // \uを削除する
-        UTF8Insert('$', cd, 1); // 先頭に16進数接頭文字$を追加する
-        try
-          w := StrToInt(cd);
-          wch := Char(w);
-        except
-          wch := '？';
-        end;
-        tmp := ReplaceRegExpr(rcd, tmp, wch);
-      until not r.ExecNext;
-    end;
-  finally
-    r.Free;
-  end;
-  Result := tmp;
-end;
-
-// テキストファイル用フィルタ
-function GetText(htmltext: string): string;
-var
-  line: string;
-begin
-	Result := '';
-  line := htmltext;
-  // HTMLエスケープシーケンスを実際の文字に戻す
-  line := Restore2RealChar(line);
-  // 青空文庫タグを変換する
-  line := ChangeAozoraTag(line);
+  // 青空文庫形式タグ文字を青空文庫形式でエスケープする
+  tmp := UTF8StringReplace(Src, '<rp>《</rp><rt>', '</rb><rp>(</rp><rt>',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '</rt><rp>》</rp></ruby>', '</rt><rp>)</rp></ruby>',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '《', '※［＃始め二重山括弧、1-1-52］',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '》', '※［＃終わり二重山括弧、1-1-53］',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '｜', '※［＃縦線、1-1-35］',   [rfReplaceAll]);
   // 青空文庫形式で保存する際のルビの変換
-  line := UTF8StringReplace(line,  '<ruby><rb>',              AO_RBI, [rfReplaceAll]);
-  line := ReplaceRegExpr('</rb><rp>.</rp><rt>', line,     AO_RBL);
-  line := ReplaceRegExpr('</rt><rp>.</rp></ruby>', line,  AO_RBR);
-
-  line := UTF8StringReplace(line,  '<ruby>',                  AO_RBI, [rfReplaceAll]);
-  line := ReplaceRegExpr('<rp>.</rp><rt>', line,          AO_RBL);
-  line := ReplaceRegExpr('</rt><rp>.</rp></ruby>', line,  AO_RBR);
-
+  tmp := UTF8StringReplace(tmp,  '<ruby><rb>', '｜', [rfReplaceAll]);
+  tmp := ReplaceRegExpr('</rb><rp>.</rp><rt>', tmp, '《');
+  tmp := ReplaceRegExpr('</rt><rp>.</rp></ruby>', tmp, '》');
+  // 青空文庫形式で保存する際のルビの変換
+  tmp := UTF8StringReplace(tmp,  '<ruby>', '｜', [rfReplaceAll]);
+  tmp := ReplaceRegExpr('<rp>.</rp><rt>', tmp, '《');
+  tmp := ReplaceRegExpr('</rt><rp>.</rp></ruby>', tmp, '》');
   // 埋め込み画像を変換する
-  line := ReplaceRegExpr('<a href=".*?"><img src="', line, AO_PIB);
-  line := ReplaceRegExpr('" alt=".*?/></a>', line, AO_PIE);
+  tmp := ReplaceRegExpr('<a href=".*?"><img src="', tmp, CRLF + '［＃リンクの図（');
+  tmp := ReplaceRegExpr('" alt=.*?/>', tmp, '）入る］' + CRLF);
   // 埋め込みリンクを変換する
-  line := UTF8StringReplace(line, '<a href="',                AO_LIB, [rfReplaceAll]);
-  line := UTF8StringReplace(line, '">挿絵</a>',               AO_LIE, [rfReplaceAll]);
-  // ダウンロード出来なかった画像を変換する
-  line := UTF8StringReplace(line, '">画像をDL出来ませんでした</a>', '(DL Error)' + AO_LIE, [rfReplaceAll]);
-  // 装飾用HTMLタグの除去
-  line := UTF8StringReplace(line, '<br />',                   '',     [rfReplaceAll]);
-  // そのの他のタグを削除する
-  // HTMLタグ以外も除去してしまうため先頭文字が半角英字の場合だけ削除するように変更(2024/6/14)
-  line := ReplaceRegExpr('<[a-x]+.*?>', line, '');
-  Result := line;
-end;
-
-function RestoreAOEsc(Src: string): string;
-var
-  tmp: string;
-begin
-  tmp := UTF8StringReplace(Src, '※［＃始め二重山括弧、1-1-52］',   '《', [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp, '※［＃終わり二重山括弧、1-1-53］', '》', [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp, '※［＃縦線、1-1-35］',             '｜', [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '<a href="', CRLF + '［＃リンク（', [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '">挿絵</a>', '）入る］' + CRLF, [rfReplaceAll]);
+  // 本文中の改行コードを置換する(各段落<p id="xx">段落</p>の最後の</p>を改行コードに変える)
+  tmp :=  UTF8StringReplace(tmp, '</p>', CRLF, [rfReplaceAll]);
   Result := tmp;
 end;
-// ****************************************************************************
-//
-// １話ページの構文を解析して本文を取り出す
-//
-// ****************************************************************************
-function ParsePage(Line: string): string;
-var
-	ps, pe, nps, npe, nas, nae, npslen, pslen, naslen: integer;
-  body, preamble, afterword, ptxt: string;
-  r: TRegExpr;
-begin
-	Result := '';
-	body := '';
-  ptxt := '';
-  preamble := '';
-  afterword := '';
-  // 文章
-  r := TRegExpr.Create;
-  try
-    r.InputString := Line;
-    r.Expression := SBODY1;
-    r.Exec;
-    nps := r.MatchPos[0];
-    npslen := r.MatchLen[0];
-    r.Expression := SBODY2;
-    r.Exec;
-    ps := r.MatchPos[0];
-    pslen := r.MatchLen[0];
-    r.Expression := SBODY3;
-    r.Exec;
-    nas := r.MatchPos[0];
-    naslen := r.MatchLen[0];
 
-    if nps > 0 then
-    begin
-      preamble 	:= UTF8Copy(Line, nps + npslen, UTF8Length(Line));
-      npe 		 	:= UTF8Pos('</div>', preamble);
-      preamble 	:= UTF8Copy(preamble, 1, npe - 1);
-      // <p id="行番号">タグを除去する
-      preamble := LTagFilter(preamble);
-    end;
-    if nas > 0 then
-    begin
-      afterword := UTF8Copy(Line, nas + naslen, UTF8Length(Line));
-      nae 			:= UTF8Pos('</div>', afterword);
-      afterword := UTF8Copy(afterword, 1, nae - 1);
-      // <p id="行番号">タグを除去する
-      afterword := LTagFilter(afterword);
-    end;
-    if ps > 0 then
-    begin
-      // 本文
-      UTF8Delete(Line, 1, ps + pslen);
-      pe			:= UTF8Pos('</div', Line);
-      body 		:= UTF8Copy(Line, 1, pe - 1);
-      // <p id="行番号">タグを除去する
-      body := LTagFilter(body);
-    end else begin
-      PBody := PBody + '本文を取得できませんでした.' + #13#10 + AO_PB2 + #13#10;
-      Exit;
-    end;
-    if preamble <> '' then
-      ptxt := ptxt + #13#10 + AO_HR + AO_KKL + GetText(preamble) + #13#10 + AO_KKR + AO_HR + #13#10;
-    body := GetText(body);
-    ptxt := ptxt + body;
-    if afterword <> '' then
-      ptxt := ptxt + #13#10 + AO_HR + AO_KKL + GetText(afterword) + #13#10 + AO_KKR + AO_HR + #13#10;
-    PBody := PBody + ptxt + AO_PB2 + #13#10;
+// 作品情報取得
+function GetNvStat(Src: string): TNvStat;
+var
+  aurl, res, sn: string;
+  pn: integer;
+  Parser: TSHParser;
+begin
+  Result.TotalPg := 0;
+  Result.AuthURL := '';
+  Parser := TSHParser.Create(Src);
+  try
+    aurl := Parser.FindRegex('<a class="c-menu__item c-menu__item--headnav" href="', '">作品情報</a>', False);
   finally
-    r.Free;
+    Parser.Free;
   end;
+  res := GetHTML(aurl, CookieName, CookieData);
+  Parser := TSHParser.Create(res);
+  try
+    Result.NvlStat := Parser.FindRegex('<span class="p-infotop-type__type.*?">', '</span>', False);
+    Result.AuthURL := Parser.FindRegex('<dd class="p-infotop-data__value"><a href="', '">', False);
+    Result.FstDate := Parser.FindRegex('<dt class="p-infotop-data__title">掲載日</dt>.*?">', '</dd>', False);
+    Result.FnlDate := Parser.FindRegex('<dt class="p-infotop-data__title">最終掲載日</dt>.*?">', '</dd>', False);
+    Result.LstDate := Parser.FindRegex('<dt class="p-infotop-data__title">最新掲載日</dt>.*?">', '</dd>', False);
+    Result.LupDate := Parser.FindRegex('<dt class="p-infotop-data__title">最終更新日</dt>.*?">', '</dd>', False);  // 短編のみ
+{$IFDEF FPC}
+    sn := SysToUTF8(Parser.Find('span', 'class', 'p-infotop-type__allep', False));
+{$ELSE}
+    sn := Parser.Find('span', 'class', 'p-infotop-type__allep', False);
+{$ENDIF}
+    // エピソード数を取得する
+    sn := ReplaceRegExpr('全', ReplaceRegExpr('エピソード', sn, ''), '');
+    sn := StringReplace(sn, ',', '', [rfReplaceAll]);
+    if sn <> '' then
+    begin
+      try
+        pn := StrToInt(sn);
+      except
+        pn := 0;
+      end;
+    end else
+      pn := 0;
+  finally
+    Parser.Free;
+  end;
+  Result.TotalPg := pn;
 end;
 
-// ****************************************************************************
-//
-// 小説情報にアクセスして小説が完結、連載中、中断、短編のいずれかを返す
-//
-// ****************************************************************************
-function GetNovelStatus(NiURL: string): string;
+// 章タイトルを取得する
+function GetChapTitle(HTMLSrc: string): string;
 var
-  str, stat: string;
-  ps, pe, dd: integer;
-  upd, tdy: TDateTime;
-  function FormatDate(DateStr: string): string;  // 2019年 09月22日 22時26分を2019/09/22に変える
-  begin
-    Result := UTF8Copy(DateStr, 1, 4) + '/' + UTF8Copy(DateStr, 7, 2) + '/' + UTF8Copy(DateStr, 10, 2);
-  end;
+  src, res: string;
+  r: TRegExpr;
 begin
   Result := '';
-  NvlInfo := '';
-
-  if isOver18 then
-    if not InternetSetCookieW(PWideChar(NiURL), PWideChar('over18'), PWideChar('yes')) then
-      Writeln(#13#10'Cookieの設定に失敗しました.');
-
-  str := LoadFromHTML(NiURL);
-  if UTF8Length(str) =0 then
-    Exit;
-  if UTF8Pos('">短編</span>', str) > 0 then
-  begin
-    Result := '【短編】';     // 短編のシンボルテキストを返す
-    StartN := 0;
-    Exit;
-  end;
-  // 小説の状態が完結済かどうかをチェックする
-  ps := UTF8Pos('">完結済</span>', str);
-  if ps > 0 then
-  begin
-    Result := '【完結】';     // 完結済のシンボルテキストを返す
-    //Exit;
-  end;
-  // 掲載日情報
-  ps := UTF8Pos('<dt class="p-infotop-data__title">掲載日</dt>', str);
-  if ps > 0 then
-  begin
-    UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">掲載日</dt>') - 1);
-    ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
-    if ps > 0 then
-    begin
-      UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
-      pe    := UTF8Pos('</dd>', str);
-      stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
-      stat  := FormatDate(stat);
-      NvlInfo := '掲載日　　：' + stat;
-    end;
-  end;
-  // 掲載日情報
-  ps := UTF8Pos('<dt class="p-infotop-data__title">最終掲載日</dt>', str);
-  if ps > 0 then
-  begin
-    UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">最終掲載日</dt>') - 1);
-    ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
-    if ps > 0 then
-    begin
-      UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
-      pe    := UTF8Pos('</dd>', str);
-      stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
-      stat  := FormatDate(stat);
-      NvlInfo := NvlInfo + #13#10'最終掲載日：' + stat;
-    end;
-  end else begin
-    // 完結済みでない場合は最新更新日時を確認して連載中なのか中断かを判断する
-    ps := UTF8Pos('<dt class="p-infotop-data__title">最新掲載日</dt>', str);
-    if ps > 0  then
-    begin
-      UTF8Delete(str, 1, ps + Length('<dt class="p-infotop-data__title">最新掲載日</dt>') - 1);
-      ps    := UTF8Pos('<dd class="p-infotop-data__value">', str);
-      if ps > 0 then
-      begin
-        UTF8Delete(str, 1, ps + Length('<dd class="p-infotop-data__value">') - 1);
-        pe    := UTF8Pos('</dd>', str);
-        stat  := UTF8Copy(str, 1, pe - 1);  // 最新部分掲載日を取得する
-        stat  := FormatDate(stat);
-        NvlInfo := NvlInfo + #13#10'最新掲載日：' + stat;
-        // EConvertError回避
-        try
-          upd   := StrToDateTime(stat);
-        except
-          upd := Yesterday;
-        end;
-        tdy   := Today;
-        dd    := DaysBetween(tdy, upd); // 最新掲載日から現在までの経過日数を取得する
-        if dd > LimitDay then
-          Result := '【中断】'   // 60日以上更新されていなければ中断のシンボルテキストを返す
-        else
-          Result := '【連載中】';
-      end;
-    end;
-  end;
-end;
-
-//
-//  各話を取得する
-//
-procedure LoadEachPage;
-var
-  i, j, n, cnt, sc, st, cc: integer;
-  pinfo: TStringList;
-  line: string;
-  CSBI: TConsoleScreenBufferInfo;
-  CCI: TConsoleCursorInfo;
-  hCOutput: THandle;
-begin
-  pinfo := TStringList.Create;
+  // 実行環境がlINUXの場合も想定してCRLFをCRとLFそれぞれで削除する
+  src := UTF8StringReplace(HTMLSrc, #13, '', [rfReplaceAll]);
+  src := UTF8StringReplace(HTMLSrc, #10, '', [rfReplaceAll]);
+  r := TRegExpr.Create;
   try
-    hCOutput := GetStdHandle(STD_OUTPUT_HANDLE);
-    GetConsoleScreenBufferInfo(hCOutput, CSBI);
-    GetConsoleCursorInfo(hCOutput, CCI);
-    cnt := PageList.Count;
-    sc  := cnt - StartN;
-    n   := 0;
-    cc  := 0;
-    Write('各話を取得中 [  0/' + Format('%3d', [cnt]) + ']');
-    CCI.bVisible := False;
-    SetConsoleCursorInfo(hCoutput, CCI);
-    if StartN > 0 then
-      st := StartN - 1
-    else
-      st := 0;
-    for i := st to PageList.Count - 1 do
+    r.InputString := src;
+    r.Expression  := '<span>.*?</span></div><!--/.c-announce-->';
+    if r.Exec then
     begin
-      Inc(n);
-      SetConsoleCursorPosition(hCOutput, CSBI.dwCursorPosition);
-      if StartN = 0 then
-        Write('各話を取得中 [' + Format('%3d', [i + 1]) + '/' + Format('%3d', [cnt]) + '(' + Format('%d', [(n * 100) div sc]) + '%)]')
-      else
-        Write('各話を取得中 [' + Format('%3d', [i + 1]) + '/' + Format('%3d', [cnt]) +']');
-      if hWnd <> 0 then
-        SendMessage(hWnd, WM_DLINFO, n, 1);
-      pinfo.CommaText := PageList.Strings[i];
-      for j := 0 to 2 do
-      begin
-        line := LoadFromHTML(pinfo.Strings[0]);
-        if line <> '' then
-        begin
-          if pinfo.Strings[1] <> '' then
-            PBody := PBody + AO_CPB + ChangeAozoraTag(Restore2RealChar(TrimJ(pinfo.Strings[1]))) + AO_CPE + #13#10;
-          if pinfo.Strings[2] <> '' then
-            PBody := PBody + AO_SEB + ChangeAozoraTag(Restore2RealChar(TrimJ(pinfo.Strings[2]))) + AO_SEE + #13#10;
-          if pinfo.Strings[3] <> '' then
-            PBody := PBody + AO_RAB + AO_KKL + pinfo.Strings[3] + #13#10 + AO_KKR + AO_RAE + #13#10;
-          ParsePage(line);
-          Inc(cc);
-          Break;
-        end;
-        Write('各話を取得中 [' + Format('%3d', [i + 1]) + '/' + Format('%3d', [cnt]) +']・・・リトライ中');
-        Sleep(200);
-      end;
-      // サーバー側に負担をかけないため0.4秒のインターバルを入れる
-      Sleep(400);
+      res := r.Match[0];
+      res := ReplaceRegExpr('<span>', ReplaceRegExpr('</span></div><!--/.c-announce-->', res, ''), '');
+      Result := res;
     end;
   finally
-    pinfo.Free;
-  end;
-  CCI.bVisible := True;
-  SetConsoleCursorInfo(hCoutput, CCI);
-  Writeln(' ... ' + IntToStr(n) + ' 個のエピソードを取得しました.');
-  if cc < sc then
-  begin
-    Writeln('!!! ' + IntToStr(sc - cc) + ' 個の取得に失敗しいました.');
-    DLErr := '［DL失敗］';  // ダウンロードが失敗した場合はファイル名の頭にマークを付ける
+    r.Free;
   end;
 end;
 
-//
-//  トップページの解析
-//
-function ParseChapter(Line: string): boolean;
+// 各話の本文を取得する
+function GetBody(HTMLSrc: string): string;
 var
-	ps, pe, cs, ce, page: integer;
-  str, sub, nstat, sn, dt: string;
-  title, auth, authurl, synop, chapter, section, sendstr: string;
+  Parser: TSHParser;
+  txt, res, chap: string;
+begin
+  txt := '';
+  chap := GetChapTitle(HTMLSrc);
+  if chap <> '' then
+  begin
+    // 章タイトルがある
+    if chap <> CpTitle then
+    begin
+      CpTitle := chap;
+      txt := '［＃大見出し］' + chap + '［＃大見出し終わり］' + CRLF;
+    end;
+  end;
+  Result := '';
+  Parser := TSHParser.Create(HTMLSrc);
+  try
+    // テキスト化の前処理を登録する
+    Parser.OnBeforeGetText := @AozoraDecord;
+
+    res := Parser.Find('h1', 'class', 'p-novel__title p-novel__title--rensai');
+    if res <> '' then
+      txt := txt + '［＃中見出し］' + res + '［＃中見出し終わり］'+ CRLF;
+    // 前書き
+    res := Parser.Find('div', 'class', 'js-novel-text p-novel__text p-novel__text--preface');
+    if res <> '' then
+      txt := txt + '［＃ここから罫囲み］' + CRLF + res + CRLF + '［＃ここで罫囲み終わり］' + CRLF + '［＃水平線］' + CRLF;
+    // 本文
+    res := Parser.Find('div', 'class', 'js-novel-text p-novel__text');
+    txt := txt + res + CRLF;
+    // 後書き
+    res := Parser.Find('div', 'class', 'js-novel-text p-novel__text p-novel__text--afterword');
+    if res <> '' then
+      txt := txt + '［＃水平線］' + CRLF + '［＃ここから罫囲み］' + CRLF + res + CRLF + '［＃ここで罫囲み終わり］' + CRLF;
+    // ページ終わり
+    txt := txt + '［＃改ページ］';
+    Result := txt;
+  finally
+    Parser.Free;
+  end;
+end;
+
+// メイン処理
+procedure NarouDL(URLAddr: string);
+var
+  res, aurl, txt, title, author, st, sendstr: string;
+  stat: TNvStat;
+  i: integer;
+  Parser: TSHParser;
+  r: TRegExpr;
+  isShort: boolean;
 {$IFDEF FPC}
   ws: WideString;
 {$ENDIF}
+{$IFDEF MSWIN}
+  CDS: TCopyDataStruct;
   conhdl: THandle;
-  r: TRegExpr;
+{$ENDIF}
 begin
-  Write('小説情報を取得中 ' + URL + ' ... ');
-  Result := False;
-  synop := '';
-  page := 1;
-	// タイトル
-  ps := UTF8Pos('<title>', Line);
-  pe := UTF8Pos('</title>', Line);
-  if (ps > 0) and (pe >ps) then
-  begin
-  	ps 	 		  := ps + 7;
-    title		  := TrimJ(Restore2Realchar(UTF8Copy(Line, ps, pe - ps)));
-    UTF8Delete(Line, 1, pe + 8);
-  end else
-  	Exit;
-  // 小説情報URL
-  ps := UTF8Pos('<a class="c-menu__item c-menu__item--headnav" href="', Line);
-  pe := UTF8Pos('">作品情報</a>', Line);
-  if (ps > 0) and (pe >ps) then
-  begin
-  	ps 					:= ps + Utf8Length('<a class="c-menu__item c-menu__item--headnav" href="');
-    str 				:= UTF8Copy(Line, ps, pe - ps);
-    UTF8Delete(Line, 1, pe + 15);
-    nstat := GetNovelStatus(str);
-    // すでにタイトルに進捗状況が付いていないことをチェックして（タイトル先頭に【完結】が付いて
-    // いる場合があるため）、なければ進捗状況を追加する
-    if (nstat = '【完結】') and (UTF8Pos('完結', title) > 0) then
-      nstat := '';
-    //else if (nstat = '【短編】') and (UTF8Pos('短編', title) > 0) then
-    //  nstat := '';
-    // タイトル名に進捗状況を付加する
-    title := nstat + title;
-  end;
-  // 保存するファイル名を準備する
-  if FileName = '' then
-  begin
-    FileName := PathFilter(title);
-    if StartPage <> '' then
-      sn := '(' + StartPage + ')'
-    else
-      sn := '';
-    FileName := ExtractFilePath(ParamStr(0)) + UTF8Copy(FileName, 1, 32) + sn + '.txt';
-  end;
-  // 作者
-  authurl := '';
-  auth := '';
-  r := TRegExpr.Create;
+  res := GetHTML(URLAddr, CookieName, CookieData);
+  // トップページ
+  stat :=  GetNvStat(res);
+  isShort := stat.NvlStat = '短編';
+  st := '【' + stat.NvlStat + '】';
+  Parser := TSHParser.Create(res);
   try
-    r.InputString := Line;
-    r.Expression  := '<div class="p-novel__author">作者：.*?</div>';
-    if r.Exec then
+    // テキスト化の前処理を登録する
+    Parser.OnBeforeGetText := @AozoraDecord;
+    title := Parser.Find('h1', 'class', 'p-novel__title');
+    // ファイル名を準備する
+    if FileName = '' then
     begin
-      auth := r.Match[0];
-      auth := ReplaceRegExpr('<div class="p-novel__author">作者：', auth, '');
-      auth := ReplaceRegExpr('</div>', auth, '');
-      r.InputString := auth;
-      r.Expression  := '<a href=".*?">';
-      // 作者URLがある
-      if r.Exec then
-      begin
-        authurl := r.Match[0];
-        auth    := ReplaceRegExpr(authurl, auth, '');
-        auth    := ReplaceRegExpr('</a>', auth, '');
-        authurl := ReplaceRegExpr('<a href="', authurl, '');
-        authurl := ReplaceRegExpr('">', authurl, '');
-      end;
-      auth := ReplaceRegExpr('\r\n', auth, '');
+      FileName := Parser.PathFilter(title);
+      LogName  := st + FileName + '.log';
+      FileName := st + FileName + '.txt';
+    end else begin
+      LogName := ChangeFileExt(FileName, '.log');
     end;
+    TextBuff.Add(st + Title);
+    author := Parser.Find('div', 'class', 'p-novel__author', False);
+    author := ReplaceRegExpr('<.*?>', ReplaceRegExpr('作者：', author, ''), '');
+    TextBuff.Add(author);
+    txt := Parser.Find('div', 'class', 'p-novel__summary');
+    if txt <> '' then
+      TextBuff.Add('［＃ここから罫囲み］' + CRLF + txt + CRLF + '［＃ここで罫囲み終わり］' + CRLF + '［＃改ページ］')
+    else
+      TextBuff.Add('［＃改ページ］');
+    LogFile.Add('小説URL   :' + URLAddr);
+    LogFile.Add('タイトル  :' + st + title);
+    LogFile.Add('作者      :' + author);
+    LogFile.Add('作者URL   :' + stat.AuthURL);
+    LogFile.Add('掲載日    :' + stat.FstDate);
+    if stat.FnlDate <> '' then
+      LogFile.Add('最終掲載日:' + stat.FnlDate)
+    else if stat.LstDate <> '' then
+      LogFile.Add('最新掲載日:' + stat.LstDate)
+    else if stat.LupDate <> '' then
+      LogFile.Add('最終更新日:' + stat.LupDate);
+    LogFile.Add('あらすじ');
+    LogFile.Add(txt + CRLF);
+    LogFile.Add(DateToStr(Now));
+{$IFDEF MSWIN}
+    // Naro2mobiから呼び出された場合は進捗状況をSendする
+    if hWnd <> 0 then
+    begin
+      conhdl := GetStdHandle(STD_OUTPUT_HANDLE);
+      sendstr := title + ',' + author;
+      Cds.dwData := Stat.TotalPg - StartN + 1;
+    {$IFDEF FPC}
+      ws := UTF8ToUTF16(sendstr);
+      Cds.cbData := ByteLength(ws) + 2;
+      Cds.lpData := PWideChar(ws);
+    {$ELSE}
+      Cds.cbData := (UTF8Length(sendstr) + 1) * SizeOf(Char);
+      Cds.lpData := Pointer(sendstr);
+    {$ENDIF}
+      SendMessage(hWnd, WM_COPYDATA, conhdl, LPARAM(Addr(Cds)));
+    end;
+{$ENDIF}
   finally
-    r.Free;
+    Parser.Free;
   end;
-  ps := UTF8Pos('</a>', Line);
-  if ps > 0 then
+  // 短編の処理
+  if isShort then
   begin
-  	//auth := Restore2Realchar(UTF8Copy(Line, 1, ps - 1));
-    // タイトル、作者名を保存
-    PBody := ChangeAozoraTag(title) + #13#10 + ChangeAozoraTag(auth) + #13#10 + AO_PB2 + #13#10;
-    LogFile.Add('小説URL 　:' + URL);
-    LogFile.Add('タイトル　:' + title);
-    LogFile.Add('作者　　　:' + auth);
-    if authurl <> '' then
-      LogFile.Add('作者URL　 : ' + authurl);
-    LogFile.Add(NvlInfo); // 掲載日情報
-	end else
-  	Exit;
-
-  // 説明
-  ps := UTF8Pos('="p-novel__summary">', Line);
-  if ps > 0 then
-  begin
-  	UTF8Delete(Line, 1, ps + UTF8Length('="p-novel__summary>"') - 1);
-    ps := 1;
-  end;
-  pe := UTF8Pos('</div>', Line);
-  if (ps > 0) and (pe > ps) then
-  begin
-    str := UTF8Copy(Line, ps, pe - ps);
-
-    synop := GetText(str);
-    // あらすじページを保存
-    if synop <> '' then
-    begin
-      LogFile.Add('あらすじ');
-      LogFile.Add(RestoreAOEsc(synop));
-      LogFile.Add('');
-      // EConvertError回避
-      try
-        DateTimeToString(dt, 'yyyy/MM/dd', Today);
-        LogFile.Add(dt);
-      except
-        ;
-      end;
-      //LogFile.Add(DateToStr(Today));
-      if nstat <> '【短編】' then
-        PBody := PBody + AO_KKL + URL + #13#10 + synop + #13#10 + AO_KKR + #13#10 + AO_PB2 + #13#10;
+    r := TRegExpr.Create;
+    try
+      r.InputString := res;
+      r.Expression  := '<article class="p-novel">.*?</article>';
+      if r.Exec then
+        res := r.Match[0];
+    finally
+      r.Free;
     end;
-
-    ps := UTF8Pos('<br />', str);
-    while ps > 0 do
-    begin
-      UTF8Delete(str, ps, 6);
-      ps := UTF8Pos('<br />', str);
-    end;
-    UTF8Delete(Line, 1, pe);
-  end;
-  title := ChangeAozoraTag(title);
-  auth := ChangeAozoraTag(auth);
-  // 短編の場合
-  if nstat = '【短編】' then
-  begin
-    Writeln('短編を取得中');
-    PBody := PBody + AO_SEB + title + AO_SEE + #13#10;  // 短編の場合は表題をタイトル名にする
-    ParsePage(Line);
-  end else begin
-    // 各話タイトルとリンク
-    //   最初に余分な情報を削除する
-    ps := UTF8Pos('<div class="p-eplist">', Line);
-    if ps > 1 then
-      UTF8Delete(Line, 1, ps + UTF8Length('<div class="p-eplist">'));
-
-    while True do
-    begin
-  	  chapter := '';
-  	  cs := UTF8Pos('="p-eplist__chapter-title">', Line);
-		  ps := UTF8Pos('="p-eplist__subtitle">', Line);
-      // Chapterがある場合
-      if (cs > 0) and (ps > 0) and (cs < ps) then
-      begin
-        UTF8Delete(Line, 1, cs + Length('="p-eplist__chapter-title">') - 1);
-        ce := UTF8Pos('</div>', Line);
-        chapter := UTF8Copy(Line, 1, ce - 1);
-        UTF8Delete(Line, 1, ce + 6);
-        // ページURLを抽出する
-        ps := UTF8Pos('<a href="', Line);
-        if ps > 0 then
-        begin
-          UTF8Delete(Line , 1, ps + Length('<a href="') - 1);
-          pe := UTF8Pos(' class="p-eplist__subtitle">', Line);
-          if pe > 0 then
-          begin
-            str := UTF8Copy(Line, 1, pe - 1);
-            UTF8Delete(Line, 1, pe + UTF8Length(' class="p-eplist__subtitle">') - 1);
-            pe := UTF8Pos('</a>', Line);
-            if pe > 0 then
-            begin
-              section := TrimJ(UTF8Copy(Line, 1, pe - 1));
-            end else begin
-              Writeln(#13#10'目次情報を取得出来ませんでした.');
-              Exit;
-            end;
-          end;
-          sub := IntToStr(page);
-          Inc(page);
-          PageList.Add(URL + sub + '/,"' + chapter + '","' + section + '",'{ + dtime});
-    	  end;
-      // Sectionだけの場合
-      end else if ps > 0 then
-      begin
-        ps := UTF8Pos('<a href="', Line);
-        if ps > 0 then
-        begin
-          UTF8Delete(Line , 1, ps + Length('<a href="') - 1);
-          pe := UTF8Pos(' class="p-eplist__subtitle">', Line);
-          if pe > 0 then
-          begin
-            str := UTF8Copy(Line, 1, pe - 1);
-            UTF8Delete(Line, 1, pe + UTF8Length(' class="p-eplist__subtitle">') - 1);
-            pe := UTF8Pos('</a>', Line);
-            if pe > 0 then
-            begin
-              section := TrimJ(UTF8Copy(Line, 1, pe - 1));
-            end else begin
-              Writeln(#13#10'目次情報を取得出来ませんでした.');
-              Exit;
-            end;
-          end;
-          sub := IntToStr(page);
-          Inc(page);
-          PageList.Add(URL + sub + '/,"","' + section + '",'{ + dtime});
-        end;
-      // もう目次はないが次の目次ページがある場合は次ページの目次を取得する
-  	  end else if ExecRegExpr(SNEXTCT, Line) then
-      begin
-        Line := LoadFromHTML(URL + '?p=' + IntToStr(ConteP));
-        if Line <> '' then
-        begin
-          ps := UTF8Pos('<div class="p-eplist">', Line);
-          if ps > 1 then
-          begin
-            UTF8Delete(Line, 1, ps + UTF8Length('<div class="p-eplist">'));
-            Inc(ConteP);
-          end else begin
-            Writeln('目次の' + IntToStr(ConteP) +'ページを読み込めませんでした.');
-            Break;
-          end;
-        end else begin
-          Writeln('目次の' + IntToStr(ConteP) +'ページを読み込めませんでした.');
-          Break;
-        end;
-      end else begin
-    	  Break;
-      end;
-    end;
-    Writeln(IntToStr(PageList.Count) + ' 話の情報を取得しました.');
-  end;
-  // リストが取得出来ないかDL開始ページ以降のページがなければエラーにする
-  if (nstat <> '【短編】') and ((PageList.Count = 0) or ((PageList.Count - StartN) < 0)) then
-  begin
-    if (PageList.Count - StartN) < 0 then
-      Writeln('DL開始ページがありません.');
+    TextBuff.Add('［＃中見出し］' + title + '［＃中見出し終わり］');
+    TextBuff.Add(GetBody(res));
+    Writeln('短編のエピソードを取得しました.');
     Exit;
   end;
-  // Naro2mobiから呼び出された場合は進捗状況をSendする
-  if hWnd <> 0 then
+  Writeln('全' + IntToStr(stat.TotalPg) + 'ページ');
+  Write('各話を取得中 [  0/' + Format('%3d', [stat.TotalPg]) + ']');
+  CpTitle := '';  // 章タイトル検出用
+  // 各話を取得する
+  for i := StartN to stat.TotalPg do
   begin
-    conhdl := GetStdHandle(STD_OUTPUT_HANDLE);
-    sendstr := title + ',' + auth;
-    Cds.dwData := PageList.Count - StartN + 1;
-  {$IFDEF FPC}
-    ws := UTF8ToUTF16(sendstr);
-    Cds.cbData := ByteLength(ws) + 2;
-    Cds.lpData := PWideChar(ws);
-  {$ELSE}
-    Cds.cbData := (UTF8Length(sendstr) + 1) * SizeOf(Char);
-    Cds.lpData := Pointer(sendstr);
-  {$ENDIF}
-    SendMessage(hWnd, WM_COPYDATA, conhdl, LPARAM(Addr(Cds)));
+    Write(#13'各話を取得中 [' + Format('%3d', [i]) + '/' + Format('%3d', [stat.TotalPg]) +']');
+    aurl := URLAddr + IntToStr(i) + '/';
+    res := GetHTML(aurl, CookieName, CookieData);
+    r := TRegExpr.Create;
+    try
+      r.InputString := res;
+      r.Expression  := '<div class="c-announce">.*?</article>';
+      if r.Exec then
+        res := r.Match[0];
+    finally
+      r.Free;
+    end;
+    txt := GetBody(res); // 本文を取得する
+    TextBuff.Add(txt);
+{$IFDEF MSWIN}
+    if hWnd <> 0 then
+      SendMessage(hWnd, WM_DLINFO, i - StartN + 1, 1);
+{$ENDIF}
+    Sleep(500); // サーバー側に負荷をかけないよう0.5秒のインターバルを入れる
   end;
-  Result := True;
+  Writeln(CRLF+ ' ... ' + IntToStr(stat.TotalPg) + ' 個のエピソードを取得しました.');
 end;
 
 var
+  aurl, op: string;
   i: integer;
-  op, df, dy: string;
-  t: TextFile;
+
 
 begin
   if ParamCount = 0 then
@@ -913,18 +380,12 @@ begin
     Writeln('');
     Writeln(VERSION);
     Writeln('  使用方法');
-    Writeln('  na6dl [-sDL開始ページ番号] 小説トップページのURL [保存するファイル名(省略するとタイトル名で保存します)]');
+    Writeln('  na6dl [-sDL開始ページ番号] 小説トップページURL [保存するファイル名(省略するとタイトル名で保存します)]');
+    ExitCode := -1;
     Exit;
   end;
-
-  ExitCode  := 0;
-  hWnd      := 0;
-  StartN    := 0; // 開始ページ番号(0スタート)
-  ConteP    := 2; // 目次の2ページ目
-  FileName  := '';
-  StartPage := '';
-
-  Path := ExtractFilePath(ParamStr(0));
+  StartN := 1;
+  ExitCode := 0;
   // オプション引数取得
   for i := 0 to ParamCount - 1 do
   begin
@@ -955,9 +416,9 @@ begin
     // 作品URL
     end else if UTF8Pos('https:', op) = 1 then
     begin
-      URL := op;
-      if UTF8Copy(URL, UTF8Length(URL), 1) <> '/' then
-        URL := URL + '/';
+      aurl := op;
+      if UTF8Copy(aurl, UTF8Length(aurl), 1) <> '/' then
+        aurl := aurl + '/';
     // それ以外であれば保存ファイル名
     end else begin
       FileName := op;
@@ -966,74 +427,31 @@ begin
     end;
   end;
 
-  if (UTF8Pos('https://ncode.syosetu.com/n', URL) = 0) and (UTF8Pos('https://novel18.syosetu.com/n', URL) = 0) then
+  if (UTF8Pos('https://ncode.syosetu.com/n', aurl) <> 1) and (UTF8Pos('https://novel18.syosetu.com/n', aurl) <> 1) then
   begin
     Writeln('小説のURLが違います.');
     ExitCode := -1;
     Exit;
   end;
-
-  df := Path + 'na6dl.cfg';
-  LimitDay := 60;
-  if FileExists(df) then
+  // ノクターン系かどうか
+  CookieName := ''; CookieData := '';
+  if UTF8Pos('https://novel18.syosetu.com/n', aurl) = 1 then
   begin
-    AssignFile(t, df);
-    Reset(t);
-    Readln(t, dy);
-    try
-      LimitDay := StrToInt(dy);
-    except
-      LimitDay := 60;
-    end;
-    CloseFile(t);
+    CookieName := 'over18';
+    CookieData := 'yes';
   end;
 
-  isOver18 := UTF8Pos('https://novel18.syosetu.com/n', URL) > 0;
-
-  // IdHTTPインスタンスにover18=yesのキャッシュを設定する
-  if isOver18 then
-  begin
-    // なろうR18作品アクセス用Cookie
-    if not InternetSetCookieW(PWideChar(URL), PWideChar('over18'), PWideChar('yes')) then
-      Writeln(#13#10'Cookieの設定に失敗しました.');
+  TextBuff := TStringList.Create;
+  LogFile  := TStringList.Create;
+  try
+    Write('小説情報を取得中 ' + aurl + ' ... ');
+    NarouDL(aurl);
+    TextBuff.SaveToFile(FileName, TEncoding.UTF8);
+    LogFile.SaveToFile(LogName, TEncoding.UTF8);
+  finally
+    TextBuff.Free;
+    LogFile.Free;
   end;
-  DLErr := '';
-  Capter := '';
-  TextLine := LoadFromHTML(URL);
-  if TextLine <> '' then
-  begin
-    PageList := TStringList.Create;
-    TextPage := TStringList.Create;
-    LogFile  := TStringList.Create;
-    try
-      if ParseChapter(TextLine) then          // 小説の目次情報を取得
-      begin
-        // 短編でなければ各話を取得する
-        if PageList.Count >= StartN then
-          LoadEachPage;                       // 小説各話情報を取得
-        try
-          TextPage.Text := PBody;
-          TextPage.WriteBOM := True;
-          LogFile.WriteBOM := True;
-          TextPage.SaveToFile(DLErr + Filename, TEncoding.UTF8);
-          LogFile.SaveToFile(ChangeFileExt(FileName, '.log'), TEncoding.UTF8);
-          Writeln(ExtractFileName(Filename) + ' に保存しました.');
-        except
-          ExitCode := -1;
-          Writeln('ファイルの保存に失敗しました.');
-        end;
-      end else begin
-        Writeln(URL + 'から作品情報を取得できませんでした.');
-        ExitCode := -1;
-      end;
-    finally
-      LogFile.Free;
-      PageList.Free;
-      TextPage.Free;
-    end;
-  end else begin
-    Writeln(URL + 'からHTMLソースを取得できませんでした.');
-    ExitCode := -1;
-  end;
+  Writeln('終了しました.');
 end.
 
