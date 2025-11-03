@@ -8,6 +8,9 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.2  2025/11/03  保存するファイル名をフルパス指定に変更した
+                        ファイルが保存されたかどうか確認するようにした
+                        タイトルに"完結"が含まれている場合は【完結済】を付加しないようにした
     ver5.11 2025/11/02  Delphi対応が不完全だったためNaro2mobiにメッセージを送信出来ていなかった不具合を修正した
     ver5.1  2025/11/01  本文の改行が削除されていた不具合を修正した
                         Delphiでコンパイルできなかった不具合を修正した
@@ -74,7 +77,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.1 2025/1/01 INOUE, masahiro';
+  VERSION = 'na6dl ver5.2 2025/11/03 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -274,8 +277,15 @@ begin
     if FileName = '' then
     begin
       FileName := Parser.PathFilter(title);
-      LogName  := st + FileName + '.log';
-      FileName := st + FileName + '.txt';
+      // タイトル名に完結の文字がある場合は【完結済】を付加しない
+      if (st = '【完結済】') and (UTF8Pos('完結', FileName) > 0) then
+      begin
+        LogName  := FileName + '.log';
+        FileName := FileName + '.txt';
+      end else begin
+        LogName  := st + FileName + '.log';
+        FileName := st + FileName + '.txt';
+      end;
     end else begin
       LogName := ChangeFileExt(FileName, '.log');
     end;
@@ -370,7 +380,7 @@ begin
 end;
 
 var
-  aurl, op: string;
+  aurl, op, path, fn, ln: string;
   i: integer;
 
 
@@ -446,8 +456,15 @@ begin
   try
     Write('小説情報を取得中 ' + aurl + ' ... ');
     NarouDL(aurl);
-    TextBuff.SaveToFile(FileName, TEncoding.UTF8);
-    LogFile.SaveToFile(LogName, TEncoding.UTF8);
+    path := ExtractFilePath(ParamStr(0));
+    fn   := path + FileName;
+    ln   := path + LogName;
+    TextBuff.SaveToFile(fn, TEncoding.UTF8);
+    LogFile.SaveToFile(ln, TEncoding.UTF8);
+    if not FileExists(fn) then
+      Writeln(fn + 'の保存に失敗しました.')
+    else
+      Writeln(FileName + 'を保存しました.');
   finally
     TextBuff.Free;
     LogFile.Free;
