@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.21 2025/11/03  Naro2mobiから呼ばれた場合ファイル名処理で失敗する不具合を修正した
     ver5.2  2025/11/03  保存するファイル名をフルパス指定に変更した
                         ファイルが保存されたかどうか確認するようにした
                         タイトルに"完結"が含まれている場合は【完結済】を付加しないようにした
@@ -22,7 +23,6 @@
 program na6dl;
 
 {$APPTYPE CONSOLE}
-
 {$IFDEF FPC}
   {$MODE DELPHI}
   {$CODEPAGE UTF8}
@@ -37,6 +37,9 @@ program na6dl;
 {$ENDIF}
 
 uses
+{$IFDEF UNIX}
+  cthreads,
+{$ENDIF}
   Classes,
   SysUtils,
   RegExpr,
@@ -97,6 +100,7 @@ var
   CookieData: string;
   hWnd: THandle;
   StartN: integer;
+  ExtFName: boolean;
 
 
 // なろう系青空文庫準拠形式エンコード (TSHParserのOnBeforeGetTextから呼ばれる)
@@ -286,8 +290,10 @@ begin
         LogName  := st + FileName + '.log';
         FileName := st + FileName + '.txt';
       end;
+      ExtFName := False;
     end else begin
       LogName := ChangeFileExt(FileName, '.log');
+      ExtFName := True;
     end;
     TextBuff.Add(st + Title);
     author := Parser.Find('div', 'class', 'p-novel__author', False);
@@ -456,9 +462,15 @@ begin
   try
     Write('小説情報を取得中 ' + aurl + ' ... ');
     NarouDL(aurl);
-    path := ExtractFilePath(ParamStr(0));
-    fn   := path + FileName;
-    ln   := path + LogName;
+    if not ExtFName then
+    begin
+      path := ExtractFilePath(ParamStr(0));
+      fn   := path + FileName;
+      ln   := path + LogName;
+    end else begin
+      fn   := FileName;
+      ln   := LogName;
+    end;
     TextBuff.SaveToFile(fn, TEncoding.UTF8);
     LogFile.SaveToFile(ln, TEncoding.UTF8);
     if not FileExists(fn) then
