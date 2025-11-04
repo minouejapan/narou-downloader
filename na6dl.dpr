@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.22 2025/11/04  Naro2mobi/Extdl_gui2に送るタイトル名に連載状況を付加していなかった不具合を修正した
     ver5.21 2025/11/03  Naro2mobiから呼ばれた場合ファイル名処理で失敗する不具合を修正した
     ver5.2  2025/11/03  保存するファイル名をフルパス指定に変更した
                         ファイルが保存されたかどうか確認するようにした
@@ -35,6 +36,7 @@ program na6dl;
 {$IFDEF MSWINDOWS}
   {$DEFINE MSWIN}
 {$ENDIF}
+
 
 uses
 {$IFDEF UNIX}
@@ -80,7 +82,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.2 2025/11/03 INOUE, masahiro';
+  VERSION = 'na6dl ver5.22 2025/11/04 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -289,6 +291,7 @@ begin
       end else begin
         LogName  := st + FileName + '.log';
         FileName := st + FileName + '.txt';
+        title    := st + title;
       end;
       ExtFName := False;
     end else begin
