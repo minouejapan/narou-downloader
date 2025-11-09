@@ -74,6 +74,7 @@
 			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
+			<Debugger_RunParams>https://ncode.syosetu.com/n2710db/</Debugger_RunParams>
 			<Manifest_File>None</Manifest_File>
 			<DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
 			<VerInfo_Locale>1033</VerInfo_Locale>
@@ -86,7 +87,7 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
 			<DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
-			<Debugger_RunParams>https://ncode.syosetu.com/n0323lg/</Debugger_RunParams>
+			<Debugger_RunParams>https://ncode.syosetu.com/n4936dp/</Debugger_RunParams>
 			<Manifest_File>None</Manifest_File>
 			<VerInfo_Locale>1033</VerInfo_Locale>
 			<DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>

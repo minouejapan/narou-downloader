@@ -8,6 +8,9 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.3  2025/11/09  連載中で60日以上更新がない作品は連載状況を【中断】になるように戻した
+                        あらすじがない作品はログファイルに「あらすじ」を入れないようにした
+                        ログファイルの最後に付加する日付を日付と時刻に変更した
     ver5.22 2025/11/04  Naro2mobi/Extdl_gui2に送るタイトル名に連載状況を付加していなかった不具合を修正した
     ver5.21 2025/11/03  Naro2mobiから呼ばれた場合ファイル名処理で失敗する不具合を修正した
     ver5.2  2025/11/03  保存するファイル名をフルパス指定に変更した
@@ -23,7 +26,6 @@
 *)
 program na6dl;
 
-{$APPTYPE CONSOLE}
 {$IFDEF FPC}
   {$MODE DELPHI}
   {$CODEPAGE UTF8}
@@ -37,13 +39,17 @@ program na6dl;
   {$DEFINE MSWIN}
 {$ENDIF}
 
+{$IFDEF MSWIN}
+  {$APPTYPE CONSOLE}
+{$ENDIF}
 
 uses
-{$IFDEF UNIX}
+{$IFDEF UNIX}{$IFDEF USECThreads}
   cthreads,
-{$ENDIF}
+{$ENDIF}{$ENDIF}
   Classes,
   SysUtils,
+  DateUtils,
   RegExpr,
 {$IFDEF MSWIN}
   Windows,
@@ -74,15 +80,15 @@ type
   TNvStat = record    // 作品情報保存用
     NvlStat,          // 連載状況
     AuthURL,          // 作者URL
-    FstDate,          // 掲載日
-    LstDate,          // 最終掲載日
-    FnlDate,          // 差新掲載日
-    LupDate: string;  // 最終更新日
+    FirstDt,          // 掲載日
+    FinalDt,          // 最終掲載日
+    LatestDt,         // 差新掲載日
+    LastUpDt: string; // 最終更新日
     TotalPg: integer; // 総ページ数
   end;
 
 const
-  VERSION = 'na6dl ver5.22 2025/11/04 INOUE, masahiro';
+  VERSION = 'na6dl ver5.3 2025/11/09 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -93,6 +99,8 @@ const
   // ユーザメッセージID
   WM_DLINFO  = WM_USER + 30;
 {$ENDIF}
+  // 中断判定日数
+  INTRPTN = 60; // 日
 
 var
   TextBuff, LogFile: TStringList;
@@ -138,9 +146,22 @@ end;
 // 作品情報取得
 function GetNvStat(Src: string): TNvStat;
 var
-  aurl, res, sn: string;
-  pn: integer;
+  aurl, res, sn, tmp: string;
+  pn, dd: integer;
   Parser: TSHParser;
+  upd: TDateTime;
+  function GetDateTimeFmt(DateStr: string): TDateTime;
+  var
+    tmp: string;
+  begin
+    tmp := DateStr;
+    tmp := UTF8StringReplace(tmp, '年 ', '/', [rfReplaceAll]);
+    tmp := UTF8StringReplace(tmp, '月', '/', [rfReplaceAll]);
+    tmp := UTF8StringReplace(tmp, '日', '', [rfReplaceAll]);
+    tmp := UTF8StringReplace(tmp, '時', ':', [rfReplaceAll]);
+    tmp := UTF8StringReplace(tmp, '分', ':00', [rfReplaceAll]);
+    Result := StrToDateTime(tmp);
+  end;
 begin
   Result.TotalPg := 0;
   Result.AuthURL := '';
@@ -153,12 +174,15 @@ begin
   res := GetHTML(aurl, CookieName, CookieData);
   Parser := TSHParser.Create(res);
   try
-    Result.NvlStat := Parser.FindRegex('<span class="p-infotop-type__type.*?">', '</span>', False);
+    tmp :=  Parser.FindRegex('<span class="p-infotop-type__type.*?">', '</span>', False);
+    if tmp = '完結済' then  // 完結済は完結に修正する
+      tmp := '完結';
+    Result.NvlStat := tmp;
     Result.AuthURL := Parser.FindRegex('<dd class="p-infotop-data__value"><a href="', '">', False);
-    Result.FstDate := Parser.FindRegex('<dt class="p-infotop-data__title">掲載日</dt>.*?">', '</dd>', False);
-    Result.FnlDate := Parser.FindRegex('<dt class="p-infotop-data__title">最終掲載日</dt>.*?">', '</dd>', False);
-    Result.LstDate := Parser.FindRegex('<dt class="p-infotop-data__title">最新掲載日</dt>.*?">', '</dd>', False);
-    Result.LupDate := Parser.FindRegex('<dt class="p-infotop-data__title">最終更新日</dt>.*?">', '</dd>', False);  // 短編のみ
+    Result.FirstDt := Parser.FindRegex('<dt class="p-infotop-data__title">掲載日</dt>.*?">', '</dd>', False);
+    Result.LatestDt := Parser.FindRegex('<dt class="p-infotop-data__title">最終掲載日</dt>.*?">', '</dd>', False);
+    Result.FinalDt := Parser.FindRegex('<dt class="p-infotop-data__title">最新掲載日</dt>.*?">', '</dd>', False);
+    Result.LastUpDt := Parser.FindRegex('<dt class="p-infotop-data__title">最終更新日</dt>.*?">', '</dd>', False);  // 短編のみ
 {$IFDEF FPC}
     sn := SysToUTF8(Parser.Find('span', 'class', 'p-infotop-type__allep', False));
 {$ELSE}
@@ -176,6 +200,17 @@ begin
       end;
     end else
       pn := 0;
+    // 連載状況が連載中であれば最新掲載日からの経過日数を取得し、INTRPTN日以上であれば連載状況を中断に変える
+    if Result.NvlStat = '連載中' then
+    begin
+      if Result.FinalDt <> '' then
+      begin
+        upd := GetDateTimeFmt(Result.FinalDt);
+        dd := DaysBetween(Today, upd);
+        if dd > INTRPTN then
+          Result.NvlStat := '中断';
+      end;
+    end;
   finally
     Parser.Free;
   end;
@@ -311,16 +346,17 @@ begin
     LogFile.Add('タイトル  :' + st + title);
     LogFile.Add('作者      :' + author);
     LogFile.Add('作者URL   :' + stat.AuthURL);
-    LogFile.Add('掲載日    :' + stat.FstDate);
-    if stat.FnlDate <> '' then
-      LogFile.Add('最終掲載日:' + stat.FnlDate)
-    else if stat.LstDate <> '' then
-      LogFile.Add('最新掲載日:' + stat.LstDate)
-    else if stat.LupDate <> '' then
-      LogFile.Add('最終更新日:' + stat.LupDate);
-    LogFile.Add('あらすじ');
+    LogFile.Add('掲載日    :' + stat.FirstDt);
+    if stat.LatestDt <> '' then
+      LogFile.Add('最終掲載日:' + stat.LatestDt)
+    else if stat.FinalDt <> '' then
+      LogFile.Add('最新掲載日:' + stat.FinalDt)
+    else if stat.LastUpDt <> '' then
+      LogFile.Add('最終更新日:' + stat.LastUpDt);
+    if txt <> '' then
+      LogFile.Add('あらすじ');
     LogFile.Add(txt + CRLF);
-    LogFile.Add(DateToStr(Now));
+    LogFile.Add(DateTimeToStr(Now));
 {$IFDEF MSWIN}
     // Naro2mobiから呼び出された場合は進捗状況をSendする
     if hWnd <> 0 then
