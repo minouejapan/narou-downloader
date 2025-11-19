@@ -8,6 +8,8 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.4  2025/11/20  出力テキストの形式をkakuyomudlと同じになるように調整した
+                        前書き・後書きの最後に改行コードがある場合は削除するようにした
     ver5.3  2025/11/09  連載中で60日以上更新がない作品は連載状況を【中断】になるように戻した
                         あらすじがない作品はログファイルに「あらすじ」を入れないようにした
                         ログファイルの最後に付加する日付を日付と時刻に変更した
@@ -88,7 +90,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.3 2025/11/09 INOUE, masahiro';
+  VERSION = 'na6dl ver5.4 2025/11/20 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -271,14 +273,24 @@ begin
     // 前書き
     res := Parser.Find('div', 'class', 'js-novel-text p-novel__text p-novel__text--preface');
     if res <> '' then
+    begin
+      // 最後にCRLFがついている場合は削除する
+      if Copy(res, Length(res) - 1, 2) = CRLF then
+        Delete(res, Length(res) - 1, 2);
       txt := txt + '［＃ここから罫囲み］' + CRLF + res + CRLF + '［＃ここで罫囲み終わり］' + CRLF + '［＃水平線］' + CRLF;
+    end;
     // 本文
     res := Parser.Find('div', 'class', 'js-novel-text p-novel__text');
     txt := txt + res + CRLF;
     // 後書き
     res := Parser.Find('div', 'class', 'js-novel-text p-novel__text p-novel__text--afterword');
     if res <> '' then
+    begin
+      // 最後にCRLFがついている場合は削除する
+      if Copy(res, Length(res) - 1, 2) = CRLF then
+        Delete(res, Length(res) - 1, 2);
       txt := txt + '［＃水平線］' + CRLF + '［＃ここから罫囲み］' + CRLF + res + CRLF + '［＃ここで罫囲み終わり］' + CRLF;
+    end;
     // ページ終わり
     txt := txt + '［＃改ページ］';
     Result := txt;
@@ -337,6 +349,7 @@ begin
     author := Parser.Find('div', 'class', 'p-novel__author', False);
     author := ReplaceRegExpr('<.*?>', ReplaceRegExpr('作者：', author, ''), '');
     TextBuff.Add(author);
+    TextBuff.Add(#13#10'［＃改ページ］');
     txt := Parser.Find('div', 'class', 'p-novel__summary');
     if txt <> '' then
       TextBuff.Add('［＃ここから罫囲み］' + CRLF + txt + CRLF + '［＃ここで罫囲み終わり］' + CRLF + '［＃改ページ］')

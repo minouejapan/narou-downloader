@@ -53,35 +53,6 @@
           </Linking>
         </CompilerOptions>
       </Item>
-      <Item Name="Linux Release">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <PathDelim Value="\"/>
-          <Target>
-            <Filename Value="lib\$(TargetCPU)-$(TargetOS)\na6dl"/>
-          </Target>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value=".."/>
-            <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
-          </SearchPaths>
-          <CodeGeneration>
-            <SmartLinkUnit Value="True"/>
-            <TargetCPU Value="x86_64"/>
-            <TargetOS Value="linux"/>
-            <Optimizations>
-              <OptimizationLevel Value="3"/>
-            </Optimizations>
-          </CodeGeneration>
-          <Linking>
-            <Debugging>
-              <GenerateDebugInfo Value="False"/>
-              <RunWithoutDebug Value="True"/>
-            </Debugging>
-            <LinkSmart Value="True"/>
-          </Linking>
-        </CompilerOptions>
-      </Item>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
