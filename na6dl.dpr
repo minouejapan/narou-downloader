@@ -8,6 +8,9 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.5  2025/12/04  大見出しを認識出来なかった不具合を修正した
+                        本文中の改行が余分に入ってしまう不具合を修正した
+                        連載状況を付加する処理がおかしかったのを修正した
     ver5.4  2025/11/20  出力テキストの形式をkakuyomudlと同じになるように調整した
                         前書き・後書きの最後に改行コードがある場合は削除するようにした
     ver5.3  2025/11/09  連載中で60日以上更新がない作品は連載状況を【中断】になるように戻した
@@ -120,8 +123,10 @@ function AozoraDecord(Src: string): string;
 var
   tmp: string;
 begin
+  // 本文中の改行は</p>で処理するため<br />があれば除去しておく
+  tmp := UTF8StringReplace(Src, '<br />', '',  [rfReplaceAll]);
   // 青空文庫形式タグ文字を青空文庫形式でエスケープする
-  tmp := UTF8StringReplace(Src, '<rp>《</rp><rt>', '</rb><rp>(</rp><rt>',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp, '<rp>《</rp><rt>', '</rb><rp>(</rp><rt>',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp, '</rt><rp>》</rp></ruby>', '</rt><rp>)</rp></ruby>',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp, '《', '※［＃始め二重山括弧、1-1-52］',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp, '》', '※［＃終わり二重山括弧、1-1-53］',  [rfReplaceAll]);
@@ -232,11 +237,11 @@ begin
   r := TRegExpr.Create;
   try
     r.InputString := src;
-    r.Expression  := '<span>.*?</span></div><!--/.c-announce-->';
+    r.Expression  := '<div class="c-announce">.*?<span>.*?</span>';
     if r.Exec then
     begin
       res := r.Match[0];
-      res := ReplaceRegExpr('<span>', ReplaceRegExpr('</span></div><!--/.c-announce-->', res, ''), '');
+      res := ReplaceRegExpr('<div class="c-announce">.*?<span>', ReplaceRegExpr('</span>', res, ''), '');
       Result := res;
     end;
   finally
@@ -331,7 +336,7 @@ begin
     begin
       FileName := Parser.PathFilter(title);
       // タイトル名に完結の文字がある場合は【完結済】を付加しない
-      if (st = '【完結済】') and (UTF8Pos('完結', FileName) > 0) then
+      if (st = '【完結】') and (UTF8Pos('完結', FileName) > 0) then
       begin
         LogName  := FileName + '.log';
         FileName := FileName + '.txt';
@@ -345,7 +350,7 @@ begin
       LogName := ChangeFileExt(FileName, '.log');
       ExtFName := True;
     end;
-    TextBuff.Add(st + Title);
+    TextBuff.Add(title);
     author := Parser.Find('div', 'class', 'p-novel__author', False);
     author := ReplaceRegExpr('<.*?>', ReplaceRegExpr('作者：', author, ''), '');
     TextBuff.Add(author);
@@ -356,7 +361,7 @@ begin
     else
       TextBuff.Add('［＃改ページ］');
     LogFile.Add('小説URL   :' + URLAddr);
-    LogFile.Add('タイトル  :' + st + title);
+    LogFile.Add('タイトル  :' + title);
     LogFile.Add('作者      :' + author);
     LogFile.Add('作者URL   :' + stat.AuthURL);
     LogFile.Add('掲載日    :' + stat.FirstDt);
