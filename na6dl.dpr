@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.7  2025/12/07  タイトル名・ファイル名への進捗状況付加処理が不十分だった不具合を修正した
     ver5.6  2025/12/07  完結作品に【完結】が好かされない場合があった不具合を修正した
                         Naro2mobi/extdl_gui(2)から呼ばれた場合にファイル名に連載状況が付加されない
                         場合があった不具合を修正した
@@ -334,37 +335,21 @@ begin
     // テキスト化の前処理を登録する
     Parser.OnBeforeGetText := @AozoraDecord;
     title := Parser.Find('h1', 'class', 'p-novel__title');
+    // 作品タイトルに進捗状況を付加する
+    if ((st = '【完結】') and (UTF8Pos('完結', title) = 0)) or (st <> '【完結】') then
+      title    := st + title;
     // ファイル名を準備する
     if FileName = '' then
     begin
       FileName := Parser.PathFilter(title);
       ExtFName := False;
+      LogName  := FileName + '.log';
+      FileName := FileName + '.txt';
     end else begin
       LogName := ChangeFileExt(FileName, '.log');
       ExtFName := True;
     end;
-    // タイトル名からファイル名を生成した場合は連載状況を付加する
-    if not ExtFName then
-    begin
-      // タイトル名に完結の文字がある場合は【完結済】を付加しない
-      if (st = '【完結】') then
-      begin
-        if UTF8Pos('完結', FileName) > 0 then
-        begin
-          LogName  := FileName + '.log';
-          FileName := FileName + '.txt';
-        end else begin
-          LogName  := st + FileName + '.log';
-          FileName := st + FileName + '.txt';
-        end;
-      end else begin
-        LogName  := st + FileName + '.log';
-        FileName := st + FileName + '.txt';
-      end
-    end;
-    // 作品タイトルにも進捗状況を付加する
-    if (st = '【完結】') and (UTF8Pos('完結', title) = 0) then
-      title    := st + title;
+
     TextBuff.Add(title);
     author := Parser.Find('div', 'class', 'p-novel__author', False);
     author := ReplaceRegExpr('<.*?>', ReplaceRegExpr('作者：', author, ''), '');
