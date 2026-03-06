@@ -17,10 +17,11 @@ procedure UTF8Insert(Substr: String; var Dest: String; Index: Integer);
 procedure UTF8Delete(var S: String; Index: Integer; Count: Integer);
 function UTF8UpperCase(Src: string): string;
 function UTF8LowerCase(Src: string): string;
+function UTF8Pos(const SubStr, Str: string): Integer;
 
 // エイリアス
 const
-  UTF8Pos: function(const SubStr, Str: string): Integer = System.Pos;
+  //UTF8Pos: function(const SubStr, Str: string): Integer = System.Pos; // Delphi12だとエラー
   UTF8StringReplace: function(const S, OldPattern, NewPattern: string; Flags: TReplaceFlags): string = System.SysUtils.StringReplace;
 
 
@@ -54,6 +55,11 @@ end;
 function UTF8LowerCase(Src: string): string;
 begin
   Result := LowerCase(Src);
+end;
+
+function UTF8Pos(const SubStr, Str: string): Integer;
+begin
+  Result := System.Pos(SubStr, Str);
 end;
 
 end.
