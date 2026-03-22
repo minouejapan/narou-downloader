@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.8  2026/03/22  Lazarusで構築した場合、ルビの処理が不完全になる不具合を修正した
     ver5.7  2025/12/07  タイトル名・ファイル名への進捗状況付加処理が不十分だった不具合を修正した
     ver5.6  2025/12/07  完結作品に【完結】が好かされない場合があった不具合を修正した
                         Naro2mobi/extdl_gui(2)から呼ばれた場合にファイル名に連載状況が付加されない
@@ -97,7 +98,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.4 2025/11/20 INOUE, masahiro';
+  VERSION = 'na6dl ver5.8 2026/3/22 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -137,12 +138,12 @@ begin
   tmp := UTF8StringReplace(tmp, '｜', '※［＃縦線、1-1-35］',   [rfReplaceAll]);
   // 青空文庫形式で保存する際のルビの変換
   tmp := UTF8StringReplace(tmp,  '<ruby><rb>', '｜', [rfReplaceAll]);
-  tmp := ReplaceRegExpr('</rb><rp>.</rp><rt>', tmp, '《');
-  tmp := ReplaceRegExpr('</rt><rp>.</rp></ruby>', tmp, '》');
+  tmp := ReplaceRegExpr('</rb><rp>.*?</rp><rt>', tmp, '《');
+  tmp := ReplaceRegExpr('</rt><rp>.*?</rp></ruby>', tmp, '》');
   // 青空文庫形式で保存する際のルビの変換
   tmp := UTF8StringReplace(tmp,  '<ruby>', '｜', [rfReplaceAll]);
-  tmp := ReplaceRegExpr('<rp>.</rp><rt>', tmp, '《');
-  tmp := ReplaceRegExpr('</rt><rp>.</rp></ruby>', tmp, '》');
+  tmp := ReplaceRegExpr('<rp>.*?</rp><rt>', tmp, '《');
+  tmp := ReplaceRegExpr('</rt><rp>.*?</rp></ruby>', tmp, '》');
   // 埋め込み画像を変換する
   tmp := ReplaceRegExpr('<a href=".*?"><img src="', tmp, CRLF + '［＃リンクの図（');
   tmp := ReplaceRegExpr('" alt=.*?/>', tmp, '）入る］' + CRLF);
