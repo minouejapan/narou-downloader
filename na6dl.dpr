@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.81 2026/04/03  あらすじの改行コードを削除していた不具合を修正多
     ver5.8  2026/03/22  Lazarusで構築した場合、ルビの処理が不完全になる不具合を修正した
     ver5.7  2025/12/07  タイトル名・ファイル名への進捗状況付加処理が不十分だった不具合を修正した
     ver5.6  2025/12/07  完結作品に【完結】が好かされない場合があった不具合を修正した
@@ -98,7 +99,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.8 2026/3/22 INOUE, masahiro';
+  VERSION = 'na6dl ver5.81 2026/4/3 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -355,11 +356,15 @@ begin
     author := Parser.Find('div', 'class', 'p-novel__author', False);
     author := ReplaceRegExpr('<.*?>', ReplaceRegExpr('作者：', author, ''), '');
     TextBuff.Add(author);
-    TextBuff.Add(#13#10'［＃改ページ］');
-    txt := Parser.Find('div', 'class', 'p-novel__summary');
+    TextBuff.Add(CRLF + '［＃改ページ］');
+    // あらすじは<br />で改行なのでテキスト成型なしで取得
+    txt := Parser.Find('div', 'class', 'p-novel__summary', False);
     if txt <> '' then
+    begin
+      txt := ReplaceRegExpr('(<br />|<br>)', txt, CRLF);
+      txt := AozoraDecord(txt);
       TextBuff.Add('［＃ここから罫囲み］' + CRLF + txt + CRLF + '［＃ここで罫囲み終わり］' + CRLF + '［＃改ページ］')
-    else
+		end else
       TextBuff.Add('［＃改ページ］');
     LogFile.Add('小説URL   :' + URLAddr);
     LogFile.Add('タイトル  :' + title);
