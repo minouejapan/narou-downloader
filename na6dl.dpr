@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.9  2026/04/09  HTMLのESCシーケンス文字デコードが抜けていたため追加した
     ver5.81 2026/04/03  あらすじの改行コードを削除していた不具合を修正多
     ver5.8  2026/03/22  Lazarusで構築した場合、ルビの処理が不完全になる不具合を修正した
     ver5.7  2025/12/07  タイトル名・ファイル名への進捗状況付加処理が不十分だった不具合を修正した
@@ -99,13 +100,24 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.81 2026/4/3 INOUE, masahiro';
+  VERSION = 'na6dl ver5.9 2026/4/9 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
 {$ELSE}
   CRLF = #13#10;
 {$ENDIF}
+// ログファイル表題 (他のダウンローダーと統一するためCONST定義とした
+  NVURL  = '小説URL   :';
+  NVTITLE= 'タイトル  :';
+  NVAUTH = '作者      :';
+  NVAURL = '作者URL   :';
+  NVBIGN = '掲載日    :';
+  NVFINI = '最終掲載日:';
+  NVLUPD = '最新掲載日:';
+  NVLRNW = '最終更新日:';
+  NVSYNP = 'あらすじ  :';
+
 {$IFDEF MSWIN}
   // ユーザメッセージID
   WM_DLINFO  = WM_USER + 30;
@@ -123,6 +135,76 @@ var
   StartN: integer;
   ExtFName: boolean;
 
+
+// HTML特殊文字の処理
+// 1)エスケープ文字列 → 実際の文字
+// 2)&#x????; → 通常の文字
+function Restore2RealChar(Base: string): string;
+var
+  tmp, cd, rcd: string;
+  w: integer;
+  ch: Char;
+  wch: WideChar;
+  r: TRegExpr;
+begin
+  // エスケープされた文字
+  tmp := UTF8StringReplace(Base, '&lt;',      '<',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&gt;',      '>',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&quot;',    '"',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&nbsp;',    ' ',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&yen;',     '\',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&brvbar;',  '|',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&copy;',    '©',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&amp;',     '&',  [rfReplaceAll]);
+  // &#????;にエンコードされた文字をデコードする(2023/3/19)
+  // 正規表現による処理に変更した(2024/3/9)
+  r := TRegExpr.Create;
+  try
+    // HTMLエスケープ文字(&#xxxx;)
+    r.Expression  := '&#.*?;';
+    r.InputString := tmp;
+    if r.Exec then
+    begin
+      repeat
+        UTF8Delete(tmp, r.MatchPos[0], r.MatchLen[0]);
+        cd := r.Match[0];
+        UTF8Delete(cd, 1, 2);           // &#を削除する
+        UTF8Delete(cd, UTF8Length(cd), 1);  // 最後の;を削除する
+        if cd[1] = 'x' then         // 先頭が16進数を表すxであればDelphiの16進数接頭文字$に変更する
+          cd[1] := '$';
+        try
+          w := StrToInt(cd);
+          ch := Char(w);
+        except
+          ch := '？';
+        end;
+        UTF8Insert(ch, tmp, r.MatchPos[0]);
+      until not r.ExecNext;
+    end;
+    // unicodeエスケープ文字(\uxxxx)
+    r.Expression  := '\\u[0-9A-Fa-f]{4}';
+    r.InputString := tmp;
+    if r.Exec then
+    begin
+      repeat
+        cd := r.Match[0];
+        rcd := '\' + cd;
+        UTF8Delete(cd, 1, 2);   // \uを削除する
+        UTF8Insert('$', cd, 1); // 先頭に16進数接頭文字$を追加する
+        try
+          w := StrToInt(cd);
+          wch := Char(w);
+        except
+          wch := '？';
+        end;
+        tmp := ReplaceRegExpr(rcd, tmp, wch);
+      until not r.ExecNext;
+    end;
+  finally
+    r.Free;
+  end;
+  Result := tmp;
+end;
 
 // なろう系青空文庫準拠形式エンコード (TSHParserのOnBeforeGetTextから呼ばれる)
 function AozoraDecord(Src: string): string;
@@ -153,6 +235,8 @@ begin
   tmp := UTF8StringReplace(tmp, '">挿絵</a>', '）入る］' + CRLF, [rfReplaceAll]);
   // 本文中の改行コードを置換する(各段落<p id="xx">段落</p>の最後の</p>を改行コードに変える)
   tmp :=  UTF8StringReplace(tmp, '</p>', CRLF, [rfReplaceAll]);
+  // HTML ESCシーケンスのデコード
+  tmp := Restore2RealChar(tmp);
   Result := tmp;
 end;
 
@@ -366,19 +450,19 @@ begin
       TextBuff.Add('［＃ここから罫囲み］' + CRLF + txt + CRLF + '［＃ここで罫囲み終わり］' + CRLF + '［＃改ページ］')
 		end else
       TextBuff.Add('［＃改ページ］');
-    LogFile.Add('小説URL   :' + URLAddr);
-    LogFile.Add('タイトル  :' + title);
-    LogFile.Add('作者      :' + author);
-    LogFile.Add('作者URL   :' + stat.AuthURL);
-    LogFile.Add('掲載日    :' + stat.FirstDt);
+    LogFile.Add(NVURL + URLAddr);
+    LogFile.Add(NVTITLE + title);
+    LogFile.Add(NVAUTH + author);
+    LogFile.Add(NVAURL + stat.AuthURL);
+    LogFile.Add(NVBIGN + stat.FirstDt);
     if stat.LatestDt <> '' then
-      LogFile.Add('最終掲載日:' + stat.LatestDt)
+      LogFile.Add(NVFINI + stat.LatestDt)
     else if stat.FinalDt <> '' then
-      LogFile.Add('最新掲載日:' + stat.FinalDt)
+      LogFile.Add(NVLUPD + stat.FinalDt)
     else if stat.LastUpDt <> '' then
-      LogFile.Add('最終更新日:' + stat.LastUpDt);
+      LogFile.Add(NVLRNW + stat.LastUpDt);
     if txt <> '' then
-      LogFile.Add('あらすじ');
+      LogFile.Add(NVSYNP);
     LogFile.Add(txt + CRLF);
     LogFile.Add(DateTimeToStr(Now));
 {$IFDEF MSWIN}
