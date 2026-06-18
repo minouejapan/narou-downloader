@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.91 2026/06/18  ノクターン・ミッドナイトノベルズ作品の場合タイトル名にR-18マークを付与するようにした
     ver5.9  2026/04/09  HTMLのESCシーケンス文字デコードが抜けていたため追加した
     ver5.81 2026/04/03  あらすじの改行コードを削除していた不具合を修正多
     ver5.8  2026/03/22  Lazarusで構築した場合、ルビの処理が不完全になる不具合を修正した
@@ -100,7 +101,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.9 2026/4/9 INOUE, masahiro';
+  VERSION = 'na6dl ver5.91 2026/6/18 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -124,6 +125,10 @@ const
 {$ENDIF}
   // 中断判定日数
   INTRPTN = 60; // 日
+
+  // R-18マーク
+  R18MARK = '【R-18】';
+
 
 var
   TextBuff, LogFile: TStringList;
@@ -424,6 +429,9 @@ begin
     // 作品タイトルに進捗状況を付加する
     if ((st = '【完結】') and (UTF8Pos('完結', title) = 0)) or (st <> '【完結】') then
       title    := st + title;
+    // R-18マーク付与
+    if CookieName <> '' then
+      title := R18MARK + title;
     // ファイル名を準備する
     if FileName = '' then
     begin
