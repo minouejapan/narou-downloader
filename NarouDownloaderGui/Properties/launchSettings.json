@@ -1,9 +1,6 @@
 {
   "profiles": {
-    "NarouDownloaderGui (Package)": {
-      "commandName": "MsixPackage"
-    },
-    "NarouDownloaderGui (Unpackaged)": {
+    "NarouDownloaderGui": {
       "commandName": "Project"
     }
   }
