@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="NarouDownloaderGui.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Unloaded="Page_Unloaded"
+    mc:Ignorable="d">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid
+            MaxWidth="960"
+            Padding="32,28,32,36"
+            HorizontalAlignment="Center">
+            <StackPanel Spacing="20">
+                <StackPanel Spacing="6">
+                    <TextBlock
+                        Style="{StaticResource TitleTextBlockStyle}"
+                        Text="なろうダウンローダー" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Text="小説家になろう・姉妹サイトの作品を、青空文庫形式のテキストで保存します。"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+
+                <InfoBar
+                    x:Name="StatusInfoBar"
+                    IsClosable="False"
+                    IsOpen="True"
+                    Message="作品URLと保存先を指定してください。"
+                    Severity="Informational"
+                    Title="準備完了" />
+
+                <Border
+                    Padding="24"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <Grid RowSpacing="18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBox
+                            x:Name="NovelUrlTextBox"
+                            Header="作品URL"
+                            PlaceholderText="https://ncode.syosetu.com/n0000aa/"
+                            AutomationProperties.HelpText="小説家になろう、または姉妹サイトの作品トップページURLを入力します。"
+                            TextChanged="NovelUrlTextBox_TextChanged" />
+
+                        <Grid Grid.Row="1" ColumnSpacing="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="OutputFolderTextBox"
+                                Header="保存先フォルダー"
+                                IsReadOnly="True"
+                                AutomationProperties.HelpText="ダウンロードしたテキストを保存するフォルダーです。" />
+                            <Button
+                                Grid.Column="1"
+                                MinWidth="104"
+                                VerticalAlignment="Bottom"
+                                AccessKey="B"
+                                AutomationProperties.Name="保存先フォルダーを選択"
+                                Click="BrowseFolderButton_Click"
+                                Content="参照..." />
+                        </Grid>
+
+                        <Grid Grid.Row="2" ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="180" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox
+                                x:Name="FileNameTextBox"
+                                Header="保存ファイル名"
+                                PlaceholderText="novel.txt"
+                                AutomationProperties.HelpText="保存するテキストファイル名を入力します。" />
+                            <NumberBox
+                                x:Name="StartPageNumberBox"
+                                Grid.Column="1"
+                                Header="開始話"
+                                Minimum="1"
+                                SpinButtonPlacementMode="Inline"
+                                Value="1"
+                                AutomationProperties.HelpText="途中から取得する場合の開始話数です。" />
+                        </Grid>
+
+                        <TextBlock
+                            Grid.Row="3"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="対応URL: ncode.syosetu.com / novel18.syosetu.com"
+                            TextWrapping="Wrap" />
+                    </Grid>
+                </Border>
+
+                <CommandBar
+                    Background="Transparent"
+                    DefaultLabelPosition="Right"
+                    IsDynamicOverflowEnabled="True">
+                    <AppBarButton
+                        x:Name="DownloadButton"
+                        AccessKey="D"
+                        AutomationProperties.Name="ダウンロードを開始"
+                        Click="DownloadButton_Click"
+                        Icon="Download"
+                        Label="ダウンロード開始">
+                        <AppBarButton.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="Enter" Modifiers="Control" />
+                        </AppBarButton.KeyboardAccelerators>
+                    </AppBarButton>
+                    <AppBarButton
+                        x:Name="StopButton"
+                        AutomationProperties.Name="実行中のダウンロードを停止"
+                        Click="StopButton_Click"
+                        Icon="Stop"
+                        IsEnabled="False"
+                        Label="停止" />
+                    <AppBarButton
+                        x:Name="OpenOutputButton"
+                        AutomationProperties.Name="保存したファイルをエクスプローラーで表示"
+                        Click="OpenOutputButton_Click"
+                        Icon="OpenFile"
+                        IsEnabled="False"
+                        Label="保存先を開く" />
+                    <CommandBar.SecondaryCommands>
+                        <AppBarButton
+                            AutomationProperties.Name="ログ表示を消去"
+                            Click="ClearLogButton_Click"
+                            Icon="Delete"
+                            Label="ログを消去" />
+                    </CommandBar.SecondaryCommands>
+                </CommandBar>
+
+                <ProgressBar
+                    x:Name="DownloadProgressBar"
+                    IsIndeterminate="True"
+                    Visibility="Collapsed" />
+
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        Style="{StaticResource SubtitleTextBlockStyle}"
+                        Text="実行ログ" />
+                    <TextBox
+                        x:Name="LogTextBox"
+                        MinHeight="240"
+                        MaxHeight="420"
+                        AcceptsReturn="True"
+                        AutomationProperties.Name="ダウンロード実行ログ"
+                        FontFamily="Consolas"
+                        IsReadOnly="True"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        TextWrapping="Wrap"
+                        />
+                </StackPanel>
+
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Text="作品の利用・再配布は、著作者の権利と各サイトの規約を守って行ってください。"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>

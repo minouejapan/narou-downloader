@@ -18,6 +18,17 @@ na6dl ダウンロードしたいなろう系小説トップページのURL (保
 
 尚、保存したファイル名の指定は省略できます。省略した場合はダウンロードした小説のタイトル名からファイル名を作成して保存します。<br>
 
+### GUI版
+`NarouDownloaderGui` フォルダーに、Windows 10/11向けのWinUI 3フロントエンドを収録しています。
+GUIには公式リリース `ver5.9.1.0` の `na6dl.exe` を同梱しています。
+
+```powershell
+dotnet build .\NarouDownloaderGui\NarouDownloaderGui.csproj -c Debug -p:Platform=x64
+dotnet run --project .\NarouDownloaderGui\NarouDownloaderGui.csproj -c Debug -p:Platform=x64
+```
+
+作品URL、保存先、ファイル名、開始話をGUIで指定でき、実行ログの確認や途中停止も行えます。
+
 ### 禁止事項
 1. na6dlを用いてWeb小 説サイトからダウンロードしたテキストファイルの第三者への販売や不特定多数への配信。 
 2. ダウンロードしたオリジナル作品を著作者の了解なく加工（文章の流用や作品の翻訳等）しての再公開。 
