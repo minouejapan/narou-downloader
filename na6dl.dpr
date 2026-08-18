@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.92 2026/08/18  SHParserの不具合(テキスト中の半角空白文字を除去していた)修正を反映した
     ver5.91 2026/06/18  ノクターン・ミッドナイトノベルズ作品の場合タイトル名にR-18マークを付与するようにした
     ver5.9  2026/04/09  HTMLのESCシーケンス文字デコードが抜けていたため追加した
     ver5.81 2026/04/03  あらすじの改行コードを削除していた不具合を修正多
@@ -101,7 +102,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.91 2026/6/18 INOUE, masahiro';
+  VERSION = 'na6dl ver5.92 2026/8/18 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
