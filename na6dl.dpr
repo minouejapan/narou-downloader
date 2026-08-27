@@ -8,6 +8,8 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.93 2026/08/27  ルビの後ろに半角空白が入る場合があった不具合を修正した
+                        トップページから作品情報を取得出来なくなった不具合を修正した
     ver5.92 2026/08/18  SHParserの不具合(テキスト中の半角空白文字を除去していた)修正を反映した
     ver5.91 2026/06/18  ノクターン・ミッドナイトノベルズ作品の場合タイトル名にR-18マークを付与するようにした
     ver5.9  2026/04/09  HTMLのESCシーケンス文字デコードが抜けていたため追加した
@@ -102,7 +104,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.92 2026/8/18 INOUE, masahiro';
+  VERSION = 'na6dl ver5.93 2026/8/27 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -162,6 +164,7 @@ begin
   tmp := UTF8StringReplace(tmp,  '&brvbar;',  '|',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp,  '&copy;',    '©',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp,  '&amp;',     '&',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '》 ',       '》', [rfReplaceAll]);
   // &#????;にエンコードされた文字をデコードする(2023/3/19)
   // 正規表現による処理に変更した(2024/3/9)
   r := TRegExpr.Create;
@@ -269,8 +272,8 @@ begin
   Result.TotalPg := 0;
   Result.AuthURL := '';
   Parser := TSHParser.Create(Src);
-  try
-    aurl := Parser.FindRegex('<a class="c-menu__item c-menu__item--headnav" href="', '">作品情報</a>', False);
+  try                       //<a class="c-menu__item c-menu__item--headnav c-menu__item--separate" href="
+    aurl := Parser.FindRegex('<a class="c-menu__item c-menu__item--head.*?" href="', '">作品情報</a>', False);
   finally
     Parser.Free;
   end;
