@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.94 2026/09/15  本文中に<>で囲まれた語句を不要なHTMLタグとして削除していた不具合を修正した
     ver5.93 2026/08/27  ルビの後ろに半角空白が入る場合があった不具合を修正した
                         トップページから作品情報を取得出来なくなった不具合を修正した
     ver5.92 2026/08/18  SHParserの不具合(テキスト中の半角空白文字を除去していた)修正を反映した
@@ -104,7 +105,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.93 2026/8/27 INOUE, masahiro';
+  VERSION = 'na6dl ver5.94 2026/9/15 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -156,9 +157,7 @@ var
   r: TRegExpr;
 begin
   // エスケープされた文字
-  tmp := UTF8StringReplace(Base, '&lt;',      '<',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&gt;',      '>',  [rfReplaceAll]);
-  tmp := UTF8StringReplace(tmp,  '&quot;',    '"',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(Base, '&quot;',    '"',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp,  '&nbsp;',    ' ',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp,  '&yen;',     '\',  [rfReplaceAll]);
   tmp := UTF8StringReplace(tmp,  '&brvbar;',  '|',  [rfReplaceAll]);
@@ -170,7 +169,7 @@ begin
   r := TRegExpr.Create;
   try
     // HTMLエスケープ文字(&#xxxx;)
-    r.Expression  := '&#.*?;';
+    r.Expression  := '&#\w{2,6};';
     r.InputString := tmp;
     if r.Exec then
     begin
@@ -246,6 +245,17 @@ begin
   tmp :=  UTF8StringReplace(tmp, '</p>', CRLF, [rfReplaceAll]);
   // HTML ESCシーケンスのデコード
   tmp := Restore2RealChar(tmp);
+  Result := tmp;
+end;
+
+// '&lt;'と'&gt;'を'<'と'>'に変換する
+// 余分なHTMLタグを除去する前にこれらをデコードするとHTMLタグとして削除されるためテキスト変換の最後に処理する
+function AfterDecord(Base: string): string;
+var
+  tmp: string;
+begin
+  tmp := UTF8StringReplace(Base, '&lt;',      '<',  [rfReplaceAll]);
+  tmp := UTF8StringReplace(tmp,  '&gt;',      '>',  [rfReplaceAll]);
   Result := tmp;
 end;
 
@@ -370,6 +380,7 @@ begin
   try
     // テキスト化の前処理を登録する
     Parser.OnBeforeGetText := @AozoraDecord;
+    Parser.OnAfterGetText  := @AfterDecord;
 
     res := Parser.Find('h1', 'class', 'p-novel__title p-novel__title--rensai');
     if res <> '' then
@@ -429,6 +440,7 @@ begin
   try
     // テキスト化の前処理を登録する
     Parser.OnBeforeGetText := @AozoraDecord;
+    Parser.OnBeforeGetText := @AfterDecord;
     title := Parser.Find('h1', 'class', 'p-novel__title');
     // 作品タイトルに進捗状況を付加する
     if ((st = '【完結】') and (UTF8Pos('完結', title) = 0)) or (st <> '【完結】') then
