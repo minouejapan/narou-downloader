@@ -8,6 +8,7 @@
     SHParser:https://github.com/minouejapan/SimpleHTMLParser
     TRegExpr:https://github.com/andgineer/TRegExpr
 
+    ver5.95 2026/09/19 大見出しをデコードしていなかった不具合を修正した
     ver5.94 2026/09/15  本文中に<>で囲まれた語句を不要なHTMLタグとして削除していた不具合を修正した
     ver5.93 2026/08/27  ルビの後ろに半角空白が入る場合があった不具合を修正した
                         トップページから作品情報を取得出来なくなった不具合を修正した
@@ -105,7 +106,7 @@ type
   end;
 
 const
-  VERSION = 'na6dl ver5.94 2026/9/15 INOUE, masahiro';
+  VERSION = 'na6dl ver5.95 2026/9/19 INOUE, masahiro';
 // 改行コード
 {$IFDEF LINUX}
   CRLF = #10;
@@ -351,7 +352,7 @@ begin
     begin
       res := r.Match[0];
       res := ReplaceRegExpr('<div class="c-announce">.*?<span>', ReplaceRegExpr('</span>', res, ''), '');
-      Result := res;
+      Result := AfterDecord(AozoraDecord(res));
     end;
   finally
     r.Free;
